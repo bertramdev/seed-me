@@ -1,0 +1,35 @@
+#! /bin/sh
+
+# Don't connect to remote repos
+if [ "$1" == "offline" ]; then
+  shift
+  export MODE='--offline'
+fi
+
+export GRAILS_OPTS="-server -Xmx2048m -XX:MaxPermSize=512M -Dserver.port=8195 -Djava.awt.headless=true"
+#export GRAILS_OPTS="$GRAILS_OPTS -DProconServer.config.location=./config/Config.groovy"
+#export GRAILS_OPTS="$GRAILS_OPTS -DProconServer.datasource.config.location=./config/DataSource.groovy"
+export GRAILS_OPTS="$GRAILS_OPTS -Dprocon.db.mode=local -Dprocon.db.logSql=false -Dprocon.reporter.inline=false -Dapp.context=/"
+
+# Jobs & Sync services
+
+# Clean slate - loadbuild & release scripts should use 'reseed'
+if [ "$1" == "reseed" ]; then
+  shift
+  export RESEED='true'
+else
+  export RESEED='false'
+fi
+
+export GRAILS_OPTS="$GRAILS_OPTS -Dprocon.server.seed=$RESEED"
+
+if [ -f setEnvironment ]; then
+  . ./setEnvironment
+fi
+
+
+
+CMD="./grailsw $MODE test-app --integration $*"
+echo $GRAILS_OPTS
+echo $CMD
+$CMD

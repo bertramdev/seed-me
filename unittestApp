@@ -1,0 +1,8 @@
+#! /bin/sh
+export GRAILS_OPTS="-server -Xmx2048m -XX:MaxPermSize=512M -Dserver.port=8195 -Djava.awt.headless=true"
+export GRAILS_OPTS="$GRAILS_OPTS -Dprocon.db.mode=local -Dprocon.db.logSql=false -Dprocon.reporter.inline=false -Dapp.context=/"
+export GRAILS_OPTS="$GRAILS_OPTS -Dprocon.voyager.jobs.enabled=true -Dprocon.server.seed=false"
+if [ -f setEnvironment ]; then
+  . ./setEnvironment
+fi
+./grailsw test-app --unit
