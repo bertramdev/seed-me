@@ -2,12 +2,6 @@ grails.project.class.dir = "target/classes"
 grails.project.test.class.dir = "target/test-classes"
 grails.project.test.reports.dir = "target/test-reports"
 
-// Repositories we publish to
-grails.project.repos.spireonSnap.url = "http://nexus.spireon.com/nexus/content/repositories/spireon-snapshot"
-grails.project.repos.spireonSnap.type = "maven"
-grails.project.repos.spireonRel.url = "http://nexus.spireon.com/nexus/content/repositories/spireon-release"
-grails.project.repos.spireonRel.type = "maven"
-grails.project.repos.default = "spireonSnap"
 grails.release.scm.enabled = false
 
 grails.project.dependency.resolution = {
@@ -17,21 +11,13 @@ grails.project.dependency.resolution = {
         // excludes 'ehcache'
     }
     log "warn" // log level of Ivy resolver, either 'error', 'warn', 'info', 'debug' or 'verbose'
-    legacyResolve true // whether to do a secondary resolve on plugin installation, not advised and here for backwards compatibility
+    legacyResolve false // whether to do a secondary resolve on plugin installation, not advised and here for backwards compatibility
     repositories {
         grailsPlugins()
         grailsHome()
         grailsCentral()
-        // uncomment the below to enable remote dependency resolution
-        // from public Maven repositories
         mavenLocal()
         mavenCentral()
-        //mavenRepo "http://snapshots.repository.codehaus.org"
-        //mavenRepo "http://repository.codehaus.org"
-        //mavenRepo "http://download.java.net/maven/2/"
-        //mavenRepo "http://repository.jboss.com/maven2/"
-        mavenRepo name:'SpireonSnapshot', root:'http://nexus.spireon.com/nexus/content/repositories/spireon-snapshot'
-        mavenRepo name:'SpireonRelease', root:'http://nexus.spireon.com/nexus/content/repositories/spireon-release'
     }
     dependencies {
         // specify dependencies here under either 'build', 'compile', 'runtime', 'test' or 'provided' scopes eg.
