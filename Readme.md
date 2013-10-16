@@ -6,8 +6,8 @@ SeedMe does not require any configuration
 
 Details
 ---------------------------
-SeedMe looks for seed files in a seed folder inside the grails-app folder.  Any files at the root of seed folder will be processed.
-SeedMe also checks for a folder in the seed folder with a name that matches the current running environment and will process any files found in that folder
+SeedMe looks for seed files in a seed folder inside the project folder and in all included plugins.  Any files at the root of seed folder will be processed.
+SeedMe also checks for a folder in the seed folder with a name that matches the current running environment and will process any files found in that folder.
 
 Seed DSL
 
@@ -18,7 +18,6 @@ This example is for a device.
 seed  = {
 	device(meta:[key:'uniqueId', update:false], uniqueId:'1108', account:[uniqueId:'proconVoyagerLegacy'], name:'voyagerTest1108',
 			deviceType:[code:'montageIon'], serialNumber:'1108', imei:'100000000001108')
-
 }
 
 ```
@@ -54,7 +53,7 @@ In some cases (mainly legacy db schemas) an association may not directly exist b
 seed = {
 	author(meta:[key:'name'], name: 'David', description: 'Author Bio Here')
 
-	book(meta:[key:'name'], name: 'How to seed your database', date: new Date(), authorIdFk: [domainClass: 'author', meta: [useId:true], name: 'David'])
+	book(meta:[key:'name'], name: 'How to seed your database', date: new Date(), authorIdFk: [domainClass: 'author', meta: [property:'id'], name: 'David'])
 }
 ```
 This will look for the specified domain of `Author` and find the author with the specified name. The resultant record will then assign the property `id` to `authorIdFk`.
@@ -83,4 +82,23 @@ seed = {
 ```
 
 This will look for the two `Author` domains by the `name` field.
+
+**Controlling Seed Order**
+SeedMe supports the ability to control seed load order across all your plugins with a dependsOn directive. An example may look like this:
+
+```groovy
+seed = {
+	dependsOn = ['Authors']
+	book(meta:[key:'name'], name: 'How to seed your database', date: new Date(), authors: [[name: 'David'], [name: 'John']])
+}
+```
+
+**NOTE**: If 2 seed files exist with the same name across plugins, dependency order can be controlled by specifying the plugin name before the seed file name. i.e.:
+
+```groovy
+seed = {
+	dependsOn = ['AuthorCore.Authors']
+	book(meta:[key:'name'], name: 'How to seed your database', date: new Date(), authors: [[name: 'David'], [name: 'John']])
+}
+```
 

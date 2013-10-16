@@ -1,10 +1,11 @@
-package com.procon.nspire.seed
+package seedme
 
 import grails.util.GrailsUtil
 import org.codehaus.groovy.grails.plugins.DomainClassGrailsPlugin
 import org.codehaus.groovy.grails.commons.ConfigurationHolder
 import org.codehaus.groovy.grails.web.metaclass.BindDynamicMethod
 import org.springframework.web.context.request.RequestContextHolder
+import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
 
 class SeedService {
 
@@ -12,70 +13,78 @@ class SeedService {
 
 	def installSeedData() {
 		log.info("seedService.installSeedData")
-		def seedFiles = []
-		def seedFolder = new File(getSeedRoot())
-		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
-		if(!seedFolder.exists()) {
-			println "Seed folder '${seedFolder.absolutePath}' not found"
-			return
+		def seedFiles = getSeedFiles()
+
+		log.info("seedService - processing ${seedFiles?.size()} files")
+		def seedSets    = buildSeedSets(seedFiles)
+		def newSeedSets = orderSeedSetsByDepends(seedSets)
+		def seedList = []
+
+		newSeedSets?.each { tmpSet ->
+			seedList.addAll(tmpSet.seedList)
 		}
-		def env = GrailsUtil.environment
-		if(seedFolder.exists()) {
-			seedFolder?.eachFile { tmpFile ->
-				if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy'))
-					seedFiles << tmpFile
-			}
-			seedFolder?.eachDir { tmpFolder ->
-				if(tmpFolder.name == env || (tmpFolder.name == tmpEnvironmentFolder)) {
-					tmpFolder.eachFile { tmpFile ->
-						if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy'))
-							seedFiles << tmpFile
-					}
-				}
-			}
-			log.info("seedService - processing ${seedFiles?.size()} files")
-			def seedSets = []
-			def seedList = []
-			seedFiles.each { tmpFile ->
-				def tmpContent = tmpFile.getText()
-				if(tmpContent?.length() > 0) {
-					def tmpBinding = new Binding()
-					def tmpConfig = new groovy.lang.GroovyShell(tmpBinding).evaluate(tmpContent)
-					def tmpBuilder = new SeedBuilder()
-					tmpBuilder.seed(tmpBinding.getVariable('seed'))
-					if(tmpBuilder.seedList?.size() > 0) {
-						def tmpSet = [seedList:[], dependsOn:tmpBuilder.dependsOn, name:getSeedSetName(tmpFile.name)]
-						tmpSet.seedList.addAll(tmpBuilder.seedList)
-						seedSets << tmpSet
+		log.debug("processing: ${seedList}")
+		seedList?.each { tmpSeed ->
+			processSeedItem(tmpSeed)
+		}
+
+	}
+
+	private orderSeedSetsByDepends(seedSets) {
+		//sort them by depends on
+		def newSeedSets = seedSets.clone()
+		seedSets?.each { tmpSet ->
+			if(tmpSet?.dependsOn?.size() > 0) {
+				def maxIndex = 0
+				def myIndex = newSeedSets.findIndexOf{it.name == tmpSet.name}
+				tmpSets.dependsOn.each { tmpDepends ->
+					def tmpMatch
+					if(tmpDepends.contains('.')) {
+						def dependsArgs = tmpDepends.split(".")
+						def pluginName  = dependsArgs[0]
+						def seedName    = dependsArgs[1]
+						tmpMatch = newSeedSets.findIndexOf{it.name == seedName && it.plugin == pluginName}
+					} else {
+						def matchCount = newSeedSets.findAll{it.name == tmpDepends}
+						if(matchCount.size() > 1) {
+							tmpMatch = newSeedSets.findIndexOf{it.name == tmpDepends && it.plugin == 'application'}
+						} else {
+							tmpMatch = newSeedSets.findIndexOf{it.name == tmpDepends}
+						}
+
 					}
 
+					if(tmpMatch > -1)
+						maxIndex = tmpMatch
 				}
-			}
-			//sort them by depends on
-			def newSeedSets = seedSets.clone()
-			seedSets?.each { tmpSet ->
-				if(tmpSet?.dependsOn?.size() > 0) {
-					def maxIndex = 0
-					def myIndex = newSeedSets.findIndexOf{it.name == tmpSet.name}
-					tmpSets.dependsOn.each { tmpDepends ->
-						def tmpMatch = newSeedSets.findIndexOf{it.name == tmpDepends}
-						if(tmpMatch > -1)
-							maxIndex = tmpMatch
-					}
-					if(myIndex < maxIndex) {
-						def tmpOut = newSeedSets.remove(myIndex)
-						newSeedSets.putAt(maxIndex - 1, tmpOut)
-					}
+				if(myIndex < maxIndex) {
+					def tmpOut = newSeedSets.remove(myIndex)
+					newSeedSets.putAt(maxIndex - 1, tmpOut)
 				}
-			}
-			newSeedSets?.each { tmpSet ->
-				seedList.addAll(tmpSet.seedList)
-			}
-			log.info("processing: ${seedList}")
-			seedList?.each { tmpSeed ->
-				processSeedItem(tmpSeed)
 			}
 		}
+		return newSeedSets
+	}
+
+	private buildSeedSets(seedFiles) {
+		def seedSets = []
+		seedFiles.each { seedFile ->
+			def tmpFile    = seedFile.file
+			def pluginName = seedFile.plugin
+			def tmpContent = tmpFile.getText()
+			if(tmpContent?.length() > 0) {
+				def tmpBinding = new Binding()
+				def tmpConfig = new groovy.lang.GroovyShell(tmpBinding).evaluate(tmpContent)
+				def tmpBuilder = new SeedBuilder()
+				tmpBuilder.seed(tmpBinding.getVariable('seed'))
+				if(tmpBuilder.seedList?.size() > 0) {
+					def tmpSet = [seedList:[], dependsOn:tmpBuilder.dependsOn, name:getSeedSetName(tmpFile.name), plugin: pluginName]
+					tmpSet.seedList.addAll(tmpBuilder.seedList)
+					seedSets << tmpSet
+				}
+			}
+		}
+		return seedSets
 	}
 
 	def processSeedItem(seedItem) {
@@ -124,7 +133,6 @@ class SeedService {
 		def tmpCriteria = [:]
 		if(domain) {
 			if(value instanceof Map) {
-				println("lookup collection: ${key} ${value}")
 				data[key] = findSeedObject(domain, value)
 			} else if(value instanceof List) {
 				data[key] = value.collect {
@@ -140,7 +148,6 @@ class SeedService {
 			}
 //		} else if (value instanceof Map && value.meta) {
 		} else if (value instanceof Map) {
-			println("lookup collection: ${key} ${value}")
 			def tmpMatchDomain = value.remove('domainClass')
 			def tmpObjectMeta = value.remove('meta')
 			if(tmpObjectMeta && tmpObjectMeta['criteria']==true) {
@@ -253,4 +260,64 @@ class SeedService {
 		return rtn
 	}
 
+	private isPluginExcluded(name) {
+		def excluded = getConfig().excludedPlugins ?: []
+		return excluded.find { it == name} ? true : false
+	}
+
+	private getSeedPathsByPlugin() {
+		def seedPaths = [:]
+		if(grailsApplication.warDeployed) {
+			//TODO: NEED TO USE getResourcePaths() here for accurate directory listing
+			def seedRoot = grailsApplication.mainContext.getResource('seed').file
+			if(seedRoot.exists()) {
+				seedRoot.eachDir { pluginFolder ->
+					if(!isPluginExcluded(pluginFolder.name)) {
+						seedPaths[pluginFolder.name] = pluginFolder.path
+					}
+				}
+			}
+		} else {
+			def seedRoot = getConfig()?.root ?: 'seed'
+			seedPaths.application = seedRoot
+			for(plugin in GrailsPluginUtils.pluginInfos) {
+				if(!isPluginExcluded(plugin.name)) {
+					def seedPath = [plugin.pluginDir.getPath(), seedRoot].join(File.separator)
+					seedPaths[plugin.name] = seedPath
+				}
+			}
+		}
+		return seedPaths
+	}
+
+
+	def getSeedFiles() {
+		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
+		def seedPaths = getSeedPathsByPlugin()
+		def env = GrailsUtil.environment
+		def seedFiles = []
+		if(!seedPaths) {
+			log.error "Seed folder '${seedFolder.absolutePath}' not found"
+		}
+		seedPaths.each { seedPath ->
+			def seedFolder = new File(seedPath.value)
+			def pluginName = seedPath.key
+			if(seedFolder.exists()) {
+				seedFolder?.eachFile { tmpFile ->
+					if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy'))
+						seedFiles << [file: tmpFile, plugin: pluginName]
+				}
+				seedFolder?.eachDir { tmpFolder ->
+					if(tmpFolder.name == env || (tmpFolder.name == tmpEnvironmentFolder)) {
+						tmpFolder.eachFile { tmpFile ->
+							if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy'))
+								seedFiles << [file: tmpFile, plugin: pluginName]
+						}
+					}
+				}
+			}
+		}
+
+		return seedFiles
+	}
 }

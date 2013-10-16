@@ -1,4 +1,4 @@
-package com.procon.nspire.seed
+package seedme
 
 /**
  * A Groovy builder to generate seed data maps
@@ -14,7 +14,6 @@ class SeedBuilder extends BuilderSupport {
 
 	@Override
 	protected Object createNode(Object name) {
-		println("name: ${name}")
 		if(name == 'build')
 			return name
 		if(name == 'seed') {
