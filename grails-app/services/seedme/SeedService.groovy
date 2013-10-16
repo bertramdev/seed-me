@@ -279,13 +279,14 @@ class SeedService {
 			}
 		} else {
 			def seedRoot = getConfig()?.root ?: 'seed'
-			seedPaths.application = seedRoot
+
 			for(plugin in GrailsPluginUtils.pluginInfos) {
 				if(!isPluginExcluded(plugin.name)) {
 					def seedPath = [plugin.pluginDir.getPath(), seedRoot].join(File.separator)
 					seedPaths[plugin.name] = seedPath
 				}
 			}
+			seedPaths.application = seedRoot
 		}
 		return seedPaths
 	}
