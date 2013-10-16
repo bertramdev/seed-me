@@ -9,17 +9,16 @@ class SeedMeGrailsPlugin {
 		"grails-app/domain/com/procon/nspire/seed/ParentHasOneChild.groovy"
     ]
 
-    def title         = "SeedMe Plugin"
-    def author        = "bdwheeler"
-    def authorEmail   = "bdwheeler@gmail.com"
-    def description   = "Implements a standard convention for adding seed data to your application."
-    def documentation = "https://github.com/bertramdev/seed-me"
-    def license       = "APACHE"
-    def organization  = [ name: "Bertram Capital", url: "http://www.bertramcapital.com/" ]
-    def developers    = [ [ name: "Brian Wheeler", email: "bwheeler@bcap.com" ], [name: 'David Estes', email: 'destes@bcap.com']]
-    def scm           = [ url: "https://github.com/bertramdev/seed-me" ]
-    // Location of the plugin's issue tracker.
-    //    def issueManagement = [ system: "JIRA", url: "http://jira.grails.org/browse/GPMYPLUGIN" ]
+    def title           = "SeedMe Plugin"
+    def author          = "Brian Wheeler"
+    def authorEmail     = "bdwheeler@gmail.com"
+    def description     = "Implements a standard convention for adding seed data to your application."
+    def documentation   = "http://github.com/bertramdev/seed-me"
+    def license         = "APACHE"
+    def organization    = [ name: "Bertram Capital", url: "http://www.bertramcapital.com/" ]
+    def developers      = [ [ name: "Brian Wheeler", email: "bwheeler@bcap.com" ], [name: 'David Estes', email: 'destes@bcap.com']]
+    def scm             = [ url: "http://github.com/bertramdev/seed-me" ]
+    def issueManagement = [ system: "GITHUB", url: "http://github.com/bertramdev/seed-me/issues" ]
 
 
 
