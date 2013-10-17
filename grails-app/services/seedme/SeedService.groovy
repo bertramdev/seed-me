@@ -162,9 +162,20 @@ class SeedService {
 			else if(tmpObjectMeta && tmpObjectMeta['property'])
 				seedObject = seedObject?."${tmpObjectMeta['property']}"
 			data[key] = seedObject
+		} else if(value instanceof String) {
+			data[key] = new groovy.text.GStringTemplateEngine().createTemplate(value).make(getDomainBindingsForGString()).toString()
 		} else {
 			data[key] = value
 		}
+	}
+
+	def getDomainBindingsForGString() {
+		def domains = grailsApplication.getArtefacts("Domain")
+		def binding = [:]
+		domains.each { domain ->
+			binding[domain.name] = domain.clazz
+		}
+		return binding
 	}
 
 	def findSeedObject(domain, opts) {
