@@ -188,6 +188,9 @@ class SeedService {
 			rtn = tmpInstance.findWhere(opts)
 			if(tmpMeta?.useId == true)
 				rtn = rtn.id
+			if(tmpMeta.containsKey('property')) {
+				rtn = rtn."${tmpMeta.property}"
+			}
 		}
 		return rtn
 	}
