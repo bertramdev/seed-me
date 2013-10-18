@@ -123,6 +123,8 @@ class SeedService {
 					} else {
 						setSeedValue(saveData, key, value)
 					}
+				} else {
+					setSeedValue(saveData, key, value)
 				}
 			}
 			createSeed(tmpDomain, tmpMeta.key, saveData)
@@ -188,7 +190,7 @@ class SeedService {
 			rtn = tmpInstance.findWhere(opts)
 			if(tmpMeta?.useId == true)
 				rtn = rtn.id
-			if(tmpMeta.containsKey('property')) {
+			if(tmpMeta?.containsKey('property')) {
 				rtn = rtn."${tmpMeta.property}"
 			}
 		}
