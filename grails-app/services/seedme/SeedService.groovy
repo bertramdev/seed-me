@@ -8,7 +8,7 @@ import org.springframework.web.context.request.RequestContextHolder
 import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
 
 class SeedService {
-
+	static transactional = false
 	def grailsApplication
 
 	def installSeedData() {
