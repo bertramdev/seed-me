@@ -31,7 +31,10 @@ grails.project.dependency.resolution = {
               ":rest-client-builder:1.0.3") {
             export = false
         }
-        compile(":hibernate:$grailsVersion",":build-test-data:2.0.5") {    // hibernate only for integration tests
+        test(":build-test-data:2.0.6") {
+            export = false
+        }
+        compile(":hibernate:$grailsVersion") {    // hibernate only for integration tests
             export = false                     // don't make this available to the client app
         }
     }

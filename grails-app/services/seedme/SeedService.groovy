@@ -8,14 +8,15 @@ import org.springframework.web.context.request.RequestContextHolder
 import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
 
 class SeedService {
-	static transactional = false
 	def grailsApplication
 
 	def installSeedData() {
-		log.info("seedService.installSeedData")
+		// GRAILS 2.3.1 ISSUE?
+		// Caused by MissingPropertyException: No such property: log for class: seedme.SeedService
+		//log.info("seedService.installSeedData")
 		def seedFiles = getSeedFiles()
 
-		log.info("seedService - processing ${seedFiles?.size()} files")
+		//log.info("seedService - processing ${seedFiles?.size()} files")
 		def seedSets    = buildSeedSets(seedFiles)
 		def newSeedSets = orderSeedSetsByDepends(seedSets)
 		def seedList = []
@@ -23,7 +24,7 @@ class SeedService {
 		newSeedSets?.each { tmpSet ->
 			seedList.addAll(tmpSet.seedList)
 		}
-		log.debug("processing: ${seedList}")
+		//log.debug("processing: ${seedList}")
 		seedList?.each { tmpSeed ->
 			processSeedItem(tmpSeed)
 		}
@@ -118,7 +119,7 @@ class SeedService {
 								setSeedValue(saveData, key, value)
 							}
 						} else {
-							log.warn "association is not handled thus this object may not be seeded"
+							//log.warn "association is not handled thus this object may not be seeded"
 						}
 					} else {
 						setSeedValue(saveData, key, value)
@@ -228,20 +229,22 @@ class SeedService {
 					def tmpChanged = applyChanges(tmpObj, config, key)
 					if(tmpChanged == true) {
 						tmpObj.save(flush:true)
-						if(tmpObj.errors.hasErrors())
-							log.error(tmpObj.errors)
+						if(tmpObj.errors.hasErrors()) {
+							//log.error(tmpObj.errors)
+						}
 					}
 				}
 			} else {
 				tmpObj = domain.newInstance()
 				applyChanges(tmpObj, config)
 				tmpObj.save(flush:true, insert:true)
-				if(tmpObj.errors.hasErrors())
-					log.error(tmpObj.errors)
+				if(tmpObj.errors.hasErrors()){
+					//log.error(tmpObj.errors)
+				}
 			}
 			return tmpObj
 		} else {
-			log.warn("cound not find domain: ${domain}")
+			//log.warn("cound not find domain: ${domain}")
 		}
 		return null
 	}
@@ -311,10 +314,12 @@ class SeedService {
 	def getSeedFiles() {
 		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
 		def seedPaths = getSeedPathsByPlugin()
-		def env = GrailsUtil.environment
+
+		def env = tmpEnvironmentFolder ?: GrailsUtil.environment
+
 		def seedFiles = []
 		if(!seedPaths) {
-			log.error "Seed folder '${seedFolder.absolutePath}' not found"
+			//log.error "Seed folder '${seedFolder.absolutePath}' not found"
 		}
 		seedPaths.each { seedPath ->
 			def seedFolder = new File(seedPath.value)
@@ -325,7 +330,7 @@ class SeedService {
 						seedFiles << [file: tmpFile, plugin: pluginName]
 				}
 				seedFolder?.eachDir { tmpFolder ->
-					if(tmpFolder.name == env || (tmpFolder.name == tmpEnvironmentFolder)) {
+					if(tmpFolder.name == env) {
 						tmpFolder.eachFile { tmpFile ->
 							if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy'))
 								seedFiles << [file: tmpFile, plugin: pluginName]
