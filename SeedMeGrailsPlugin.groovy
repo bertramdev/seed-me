@@ -16,7 +16,7 @@ class SeedMeGrailsPlugin {
     def documentation   = "http://github.com/bertramdev/seed-me"
     def license         = "APACHE"
     def organization    = [ name: "Bertram Capital", url: "http://www.bertramcapital.com/" ]
-    def developers      = [ [ name: "Brian Wheeler", email: "bwheeler@bcap.com" ], [name: 'David Estes', email: 'destes@bcap.com']]
+    def developers      = [ [ name: "Brian Wheeler", email: "bwheeler@bcap.com" ], [name: 'David Estes', email: 'destes@bcap.com'], [name: 'Jordon Saardchit',email: 'jsaardchit@bcap.com']]
     def scm             = [ url: "http://github.com/bertramdev/seed-me" ]
     def issueManagement = [ system: "GITHUB", url: "http://github.com/bertramdev/seed-me/issues" ]
 
