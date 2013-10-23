@@ -1,10 +1,9 @@
 package com.procon.nspire.seed
+
+import groovy.json.JsonSlurper
+
 /**
- * Created with IntelliJ IDEA.
- * User: WChu
- * Date: 8/20/13
- * Time: 3:31 PM
- * To change this template use File | Settings | File Templates.
+ * @author WChu
  */
 class Child {
 
@@ -37,11 +36,10 @@ class Child {
 	}
 
 	def getConfigMap() {
-		return config ? new groovy.json.JsonSlurper().parseText(config) : [:]
+		return config ? new JsonSlurper().parseText(config) : [:]
 	}
 
 	def setConfigMap(configMap) {
 		config = configMap ? configMap.encodeAsJSON() : null
 	}
-
 }

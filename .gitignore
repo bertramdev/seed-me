@@ -4,7 +4,6 @@ plugin.xml
 *.log
 *.zip
 *.zip.sha1
-/web-app/META-INF
-/web-app/WEB-INF
+/web-app
 *.idea/**
 *.iml
