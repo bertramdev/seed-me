@@ -8,12 +8,12 @@ class SeedBuilder extends BuilderSupport {
 
 	def seedList
 	def currentRow
-	def seedItem = null
+	def seedItem
 	def dependsOn = []
 	def seeding = false
 
 	@Override
-	protected Object createNode(Object name) {
+	protected createNode(name) {
 		if(name == 'build')
 			return name
 		if(name == 'seed') {
@@ -25,7 +25,7 @@ class SeedBuilder extends BuilderSupport {
 	}
 
 	@Override
-	protected Object createNode(Object name, Object value ) {
+	protected createNode(name, value ) {
 		if(name == 'meta')
 			currentRow.meta = value
 		else if(curentRow == null && name == 'dependsOn')
@@ -36,7 +36,7 @@ class SeedBuilder extends BuilderSupport {
 	}
 
 	@Override
-	protected Object createNode( Object name, Map attribs ) {
+	protected createNode( name, Map attribs ) {
 		if(seeding) {
 			if(seedItem == null) {
 				if(name == 'dependsOn') {
@@ -59,14 +59,10 @@ class SeedBuilder extends BuilderSupport {
 	}
 
 	@Override
-	protected Object createNode(Object arg0, Map arg1, Object arg2) {
-		return null
-	}
+	protected createNode(name, Map attributes, value) {}
 
 	@Override
-	protected void setParent(Object arg0, Object arg1) {
-
-	}
+	protected void setParent(parent, child) {}
 
 	@Override
 	void nodeCompleted( parent, child ) {
@@ -77,5 +73,4 @@ class SeedBuilder extends BuilderSupport {
 			seeding = false
 		}
 	}
-
 }

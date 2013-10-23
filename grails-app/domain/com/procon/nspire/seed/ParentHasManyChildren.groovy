@@ -1,10 +1,7 @@
 package com.procon.nspire.seed
+
 /**
- * Created with IntelliJ IDEA.
- * User: WChu
- * Date: 8/20/13
- * Time: 3:31 PM
- * To change this template use File | Settings | File Templates.
+ * @author WChu
  */
 class ParentHasManyChildren {
 	String code

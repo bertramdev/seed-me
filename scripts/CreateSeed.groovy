@@ -1,18 +1,20 @@
 includeTargets << grailsScript("_GrailsBootstrap")
 
-includeTargets << new File(emberAssetPipelinePluginDir, "scripts/_CreateSeedFile.groovy")
+includeTargets << new File(seedMePluginDir, "scripts/_CreateSeedFile.groovy")
 
-target(createSeed: "Creates a seed file!") {
-	depends(configureProxy,compile, packageApp)
+target(createSeed: "Creates a seed file") {
+	depends(configureProxy, compile, packageApp)
+
 	if(!argsMap.params[0]) {
 		println "Usage: grails create-seed [-e=development] [SeedName]"
+		return
 	}
+
 	def arguments = [
 		seedName: argsMap.params[0],
-		environment: argsMap['e'] ?: null
+		environment: argsMap.e ?: null
 	]
-  createSeedFile(arguments)
+	createSeedFile(arguments)
 }
 
 setDefaultTarget(createSeed)
-

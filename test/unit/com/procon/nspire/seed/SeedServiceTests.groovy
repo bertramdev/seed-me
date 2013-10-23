@@ -1,7 +1,9 @@
 package com.procon.nspire.seed
 
 import grails.buildtestdata.mixin.Build
-import grails.test.mixin.*
+import grails.test.mixin.Mock
+import grails.test.mixin.TestFor
+import seedme.SeedService
 
 /**
  * See the API for {@link grails.test.mixin.services.ServiceUnitTestMixin} for usage instructions
@@ -11,18 +13,18 @@ import grails.test.mixin.*
 @Mock([ParentHasOneChild, Child, ParentHasManyChildren, ChildParentRequired])
 class SeedServiceTests {
 
+	private SeedService seedService = new SeedService()
+
 	void testFindSeedObjectWithResult() {
-	    ParentHasManyChildren.build(code:'vehicleFinance')
+		ParentHasManyChildren.build(code:'vehicleFinance')
 
 		def parents = ParentHasManyChildren.findByCode("vehicleFinance")
 
 		assert parents != null : "Test data was not built"
 
-		SeedService seedService = new SeedService()
 		seedService.grailsApplication = grailsApplication
 
-		def opts = [:]
-		opts['code'] = 'vehicleFinance'
+		def opts = [code: 'vehicleFinance']
 
 		def domain = 'parentHasManyChildren'
 
@@ -34,12 +36,10 @@ class SeedServiceTests {
 	}
 
 	void testFindSeedObjectWithNoResult() {
-		SeedService seedService = new SeedService()
 
 		seedService.grailsApplication = grailsApplication
 
-		def opts = [:]
-		opts['code'] = 'vehicleFinance'
+		def opts = [code: 'vehicleFinance']
 
 		def domain = 'parentHasManyChildren'
 
@@ -54,10 +54,8 @@ class SeedServiceTests {
 		def parents = ParentHasManyChildren.findAll()
 		def children = Child.findAll()
 
-		assert parents.size() == 0 : 'There should be no parent data!'
-		assert children.size() == 0 : 'There should be no children data!'
-
-		SeedService seedService = new SeedService()
+		assert parents.isEmpty() : 'There should be no parent data!'
+		assert children.isEmpty() : 'There should be no children data!'
 
 		grailsApplication.config.grails.plugin.seed.root = 'test/seed/simple'
 
@@ -76,10 +74,8 @@ class SeedServiceTests {
 		def parents = ParentHasManyChildren.findAll()
 		def children = Child.findAll()
 
-		assert parents.size() == 0 : 'There should be no parent data!'
-		assert children.size() == 0 : 'There should be no children data!'
-
-		SeedService seedService = new SeedService()
+		assert parents.isEmpty() : 'There should be no parent data!'
+		assert children.isEmpty() : 'There should be no children data!'
 
 		grailsApplication.config.grails.plugin.seed.root = 'test/seed/meta-object-support'
 
@@ -102,10 +98,8 @@ class SeedServiceTests {
 		def parents = ParentHasManyChildren.findAll()
 		def children = Child.findAll()
 
-		assert parents.size() == 0 : 'There should be no parent data!'
-		assert children.size() == 0 : 'There should be no children data!'
-
-		SeedService seedService = new SeedService()
+		assert parents.isEmpty() : 'There should be no parent data!'
+		assert children.isEmpty() : 'There should be no children data!'
 
 		grailsApplication.config.grails.plugin.seed.root = 'test/seed/has-many-support'
 
@@ -138,10 +132,8 @@ class SeedServiceTests {
 		def parents = ParentHasOneChild.findAll()
 		def children = Child.findAll()
 
-		assert parents.size() == 0 : 'There should be no parent data!'
-		assert children.size() == 0 : 'There should be no children data!'
-
-		SeedService seedService = new SeedService()
+		assert parents.isEmpty() : 'There should be no parent data!'
+		assert children.isEmpty() : 'There should be no children data!'
 
 		grailsApplication.config.grails.plugin.seed.root = 'test/seed/parent-single-child'
 
@@ -160,10 +152,8 @@ class SeedServiceTests {
 		def parents = ParentHasManyChildren.findAll()
 		def children = ChildParentRequired.findAll()
 
-		assert parents.size() == 0 : 'There should be no parent data!'
-		assert children.size() == 0 : 'There should be no children data!'
-
-		SeedService seedService = new SeedService()
+		assert parents.isEmpty() : 'There should be no parent data!'
+		assert children.isEmpty() : 'There should be no children data!'
 
 		grailsApplication.config.grails.plugin.seed.root = 'test/seed/child-single-parent'
 
@@ -181,9 +171,7 @@ class SeedServiceTests {
 	void testLookupOfSeedItemWithCompositeKey() {
 		def parents = ParentHasManyChildren.findAll()
 
-		assert parents.size() == 0 : 'There should be no parent data!'
-
-		SeedService seedService = new SeedService()
+		assert parents.isEmpty() : 'There should be no parent data!'
 
 		grailsApplication.config.grails.plugin.seed.root = 'test/seed/composite-key-support'
 
