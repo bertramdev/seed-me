@@ -2,10 +2,10 @@ class SeedMeGrailsPlugin {
 	def version       = "0.2.0"
 	def grailsVersion = "2.0 > *"
 	def pluginExcludes = [
-		"grails-app/domain/com/procon/nspire/seed/Child.groovy",
-		"grails-app/domain/com/procon/nspire/seed/ChildParentRequired.groovy",
-		"grails-app/domain/com/procon/nspire/seed/ParentHasManyChildren.groovy",
-		"grails-app/domain/com/procon/nspire/seed/ParentHasOneChild.groovy"
+		"grails-app/domain/seedme/Child.groovy",
+		"grails-app/domain/seedme/ChildParentRequired.groovy",
+		"grails-app/domain/seedme/ParentHasManyChildren.groovy",
+		"grails-app/domain/seedme/ParentHasOneChild.groovy"
 	]
 
 	def title           = "SeedMe Plugin"
