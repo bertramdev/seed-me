@@ -28,7 +28,7 @@ class SeedBuilder extends BuilderSupport {
 	protected createNode(name, value ) {
 		if(name == 'meta')
 			currentRow.meta = value
-		else if(curentRow == null && name == 'dependsOn')
+		else if(currentRow == null && name == 'dependsOn')
 			dependsOn = value
 		else
 			currentRow.data[name] = value
