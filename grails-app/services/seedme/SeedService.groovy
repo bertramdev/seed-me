@@ -2,11 +2,11 @@ package seedme
 
 import grails.util.Environment
 import groovy.text.GStringTemplateEngine
-
 import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
 import org.codehaus.groovy.grails.web.metaclass.BindDynamicMethod
 
 class SeedService {
+
 	def grailsApplication
 
 	void installSeedData() {
@@ -14,18 +14,26 @@ class SeedService {
 		// Caused by MissingPropertyException: No such property: log for class: seedme.SeedService
 		//log.info("seedService.installSeedData")
 		def seedFiles = getSeedFiles()
-
 		//log.info("seedService - processing ${seedFiles?.size()} files")
 		def seedSets    = buildSeedSets(seedFiles)
 		def newSeedSets = orderSeedSetsByDepends(seedSets)
 		def seedList = []
-
 		newSeedSets?.each { tmpSet ->
 			seedList.addAll(tmpSet.seedList)
 		}
 		//log.debug("processing: ${seedList}")
 		seedList?.each { tmpSeed ->
 			processSeedItem(tmpSeed)
+		}
+	}
+
+	def installExternalSeed(seedContent) {
+		try {
+			def tmpSet = buildSeedSet('external', seedContent)
+			processSeedItem(tmpSet)
+		} catch(e) {
+			//log.error(e)
+			throw e
 		}
 	}
 
@@ -68,6 +76,7 @@ class SeedService {
 	private buildSeedSets(seedFiles) {
 		def seedSets = []
 		seedFiles.each { seedFile ->
+			//change to call below method
 			def tmpFile    = seedFile.file
 			def pluginName = seedFile.plugin
 			def tmpContent = tmpFile.getText()
@@ -84,6 +93,21 @@ class SeedService {
 			}
 		}
 		return seedSets
+	}
+
+	private buildSeedSet(name, seedContent, plugin = null) {
+		def rtn
+		if(seedContent) {
+			def tmpBinding = new Binding()
+			def tmpConfig = new GroovyShell(tmpBinding).evaluate(seedContent)
+			def tmpBuilder = new SeedBuilder()
+			tmpBuilder.seed(tmpBinding.getVariable('seed'))
+			if(tmpBuilder.seedList) {
+				rtn = [seedList:[], dependsOn:tmpBuilder.dependsOn, name:name, plugin:plugin]
+				rtn.seedList.addAll(tmpBuilder.seedList)
+			}
+		}
+		return rtn
 	}
 
 	def processSeedItem(seedItem) {
@@ -137,7 +161,7 @@ class SeedService {
 				data[key] = findSeedObject(domain, value)
 			} else if(value instanceof List) {
 				data[key] = value.collect {
-					def tmpSeedMeta = it.remove('meta')
+					def tmpSeedMeta = it.remove(getMetaKey())
 					tmpCriteria = it
 					if(tmpSeedMeta && tmpSeedMeta['criteria']==true) {
 						it.each{ k, val  ->
@@ -147,10 +171,10 @@ class SeedService {
 					findSeedObject(domain, tmpCriteria)
 				}.findAll{it!=null}
 			}
-//		} else if (value instanceof Map && value.meta) {
+			//} else if (value instanceof Map && value.meta) {
 		} else if (value instanceof Map) {
 			def tmpMatchDomain = value.remove('domainClass')
-			def tmpObjectMeta = value.remove('meta')
+			def tmpObjectMeta = value.remove(getMetaKey())
 			if(tmpObjectMeta && tmpObjectMeta['criteria']==true) {
 				value.each{ k , val ->
 					setSeedValue(tmpCriteria,k,val)
@@ -182,7 +206,7 @@ class SeedService {
 		def rtn
 		if(domain instanceof CharSequence)
 			domain = grailsApplication.getArtefactByLogicalPropertyName('Domain', domain.toString())?.getClazz()
-		def tmpMeta = opts.remove('meta')
+		def tmpMeta = opts.remove(getMetaKey())
 		if(domain) {
 			def tmpInstance = domain.newInstance()
 			rtn = tmpInstance.findWhere(opts)
@@ -204,6 +228,10 @@ class SeedService {
 
 	String getSeedPath(name) {
 		return getSeedRoot() + name
+	}
+
+	String getMetaKey() {
+		getConfig()?.metaKey ?: 'meta'
 	}
 
 	def getEnvironmentSeedPath() {
@@ -310,9 +338,7 @@ class SeedService {
 	def getSeedFiles() {
 		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
 		def seedPaths = getSeedPathsByPlugin()
-
 		def env = tmpEnvironmentFolder ?: Environment.current.name
-
 		def seedFiles = []
 		if(!seedPaths) {
 			//log.error "Seed folder '${seedFolder.absolutePath}' not found"
@@ -335,7 +361,7 @@ class SeedService {
 				}
 			}
 		}
-
 		return seedFiles
 	}
+
 }

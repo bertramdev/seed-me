@@ -3,6 +3,8 @@ grails {
 		seed {
 			root = 'seed'
 			environment = null
+			metaKey = 'meta'
+			autoSeed = false
 		}
 	}
 }
