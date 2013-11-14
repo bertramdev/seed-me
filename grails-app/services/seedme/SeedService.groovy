@@ -44,7 +44,7 @@ class SeedService {
 			if(tmpSet?.dependsOn?.size() > 0) {
 				def maxIndex = 0
 				def myIndex = newSeedSets.findIndexOf{it.name == tmpSet.name}
-				tmpSets.dependsOn.each { tmpDepends ->
+				tmpSet.dependsOn.each { tmpDepends ->
 					def tmpMatch
 					if(tmpDepends.contains('.')) {
 						def dependsArgs = tmpDepends.split(".")
