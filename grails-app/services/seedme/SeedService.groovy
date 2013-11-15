@@ -23,7 +23,12 @@ class SeedService {
 		}
 		//log.debug("processing: ${seedList}")
 		seedList?.each { tmpSeed ->
-			processSeedItem(tmpSeed)
+			try {
+				processSeedItem(tmpSeed)
+			} catch(e) {
+				println("error processing seed file: ${tmpSeed?.name}")
+				throw e
+			}
 		}
 	}
 
