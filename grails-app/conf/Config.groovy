@@ -1,7 +1,7 @@
 grails {
 	plugin {
 		seed {
-			root = 'seed'
+			root = 'src/seed'
 			environment = null
 			metaKey = 'meta'
 			autoSeed = false

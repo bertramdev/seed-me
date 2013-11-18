@@ -4,10 +4,15 @@ import grails.util.Environment
 import groovy.text.GStringTemplateEngine
 import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
 import org.codehaus.groovy.grails.web.metaclass.BindDynamicMethod
+import org.codehaus.groovy.grails.plugins.DomainClassGrailsPlugin
 
 class SeedService {
 
+	static transactional = false
+
 	def grailsApplication
+	def sessionFactory
+	def propertyInstanceMap = DomainClassGrailsPlugin.PROPERTY_INSTANCE_MAP
 
 	void installSeedData() {
 		// GRAILS 2.3.1 ISSUE?
@@ -17,19 +22,27 @@ class SeedService {
 		//log.info("seedService - processing ${seedFiles?.size()} files")
 		def seedSets    = buildSeedSets(seedFiles)
 		def newSeedSets = orderSeedSetsByDepends(seedSets)
-		def seedList = []
+		//def seedList = []
 		newSeedSets?.each { tmpSet ->
-			seedList.addAll(tmpSet.seedList)
-		}
-		//log.debug("processing: ${seedList}")
-		seedList?.each { tmpSeed ->
 			try {
-				processSeedItem(tmpSeed)
-			} catch(e) {
-				println("error processing seed file: ${tmpSeed?.name}")
-				throw e
+				println("processing seed - ${tmpSet.name}")
+				tmpSet.seedList?.each { tmpSeed ->
+					//println("processing seed file ${tmpSeed.name}")
+					try {
+						processSeedItem(tmpSeed)
+					} catch(e) {
+						println("error processing seed item ${tmpSeed} - ${e}")
+						throw e
+					}
+				}
+				gormFlush()
+				//seedList.addAll(tmpSet.seedList)
+			} catch(setError) {
+				println("error processing seed set ${tmpSet?.name} - ${setError}")
 			}
 		}
+		//log.debug("processing: ${seedList}")
+		println("installSeedData complete")
 	}
 
 	def installExternalSeed(seedContent) {
@@ -44,6 +57,42 @@ class SeedService {
 
 	private orderSeedSetsByDepends(seedSets) {
 		//sort them by depends on
+		def noDepends = seedSets.findAll{it.dependsOn == null || it.dependsOn.size() < 1}
+		def yesDepends = seedSets.findAll{it.dependsOn != null && it.dependsOn.size() > 1}
+		def rtnSets = noDepends
+		println("noDepends: ${noDepends.collect{it.name}}")
+		println("yesDepends: ${yesDepends.collect{it.name}}")
+		def dependsMap = [:]
+		yesDepends.sort{it.dependsOn.size()}
+		yesDepends?.each { tmpSet ->
+			def maxIndex = 0
+			def yesIndex = yesDepends.findIndexOf{it.name == tmpSet.name}
+			tmpSet.dependsOn.each { tmpDepends ->
+				def tmpMatch
+				if(tmpDepends.contains('.')) {
+					def dependsArgs = tmpDepends.split(".")
+					def pluginName  = dependsArgs[0]
+					def seedName    = dependsArgs[1]
+					tmpMatch = yesDepends.findIndexOf{it.name == seedName && it.plugin == pluginName}
+				} else {
+					def matchCount = yesDepends.findAll{it.name == tmpDepends}
+					if(matchCount.size() > 1) {
+						tmpMatch = yesDepends.findIndexOf{it.name == tmpDepends && it.plugin == 'application'}
+					} else {
+						tmpMatch = yesDepends.findIndexOf{it.name == tmpDepends}
+					}
+				}
+				if(tmpMatch > -1) {
+					maxIndex = tmpMatch
+				}
+			}
+			tmpSet.maxIndex = maxIndex
+		}
+		yesDepends.sort{it.maxIndex}
+		rtnSets.addAll(yesDepends)
+		println("rtnSets: ${rtnSets.collect{it.name}}")
+		return rtnSets
+		/*seedSets.sort{it.dependsOn?.size()}
 		def newSeedSets = seedSets.clone()
 		seedSets?.each { tmpSet ->
 			if(tmpSet?.dependsOn?.size() > 0) {
@@ -64,7 +113,6 @@ class SeedService {
 							tmpMatch = newSeedSets.findIndexOf{it.name == tmpDepends}
 						}
 					}
-
 					if(tmpMatch > -1) {
 						maxIndex = tmpMatch
 					}
@@ -75,7 +123,7 @@ class SeedService {
 				}
 			}
 		}
-		return newSeedSets
+		return newSeedSets*/
 	}
 
 	private buildSeedSets(seedFiles) {
@@ -86,15 +134,9 @@ class SeedService {
 			def pluginName = seedFile.plugin
 			def tmpContent = tmpFile.getText()
 			if(tmpContent) {
-				def tmpBinding = new Binding()
-				def tmpConfig = new GroovyShell(tmpBinding).evaluate(tmpContent)
-				def tmpBuilder = new SeedBuilder()
-				tmpBuilder.seed(tmpBinding.getVariable('seed'))
-				if(tmpBuilder.seedList) {
-					def tmpSet = [seedList:[], dependsOn:tmpBuilder.dependsOn, name:getSeedSetName(tmpFile.name), plugin: pluginName]
-					tmpSet.seedList.addAll(tmpBuilder.seedList)
-					seedSets << tmpSet
-				}
+				def tmpSeedSet = buildSeedSet(getSeedSetName(tmpFile.name), tmpContent, pluginName)
+				if(tmpSeedSet)
+					seedSets << tmpSeedSet
 			}
 		}
 		return seedSets
@@ -102,16 +144,22 @@ class SeedService {
 
 	private buildSeedSet(name, seedContent, plugin = null) {
 		def rtn
-		if(seedContent) {
-			def tmpBinding = new Binding()
-			def tmpConfig = new GroovyShell(tmpBinding).evaluate(seedContent)
-			def tmpBuilder = new SeedBuilder()
-			tmpBuilder.seed(tmpBinding.getVariable('seed'))
-			if(tmpBuilder.seedList) {
-				rtn = [seedList:[], dependsOn:tmpBuilder.dependsOn, name:name, plugin:plugin]
-				rtn.seedList.addAll(tmpBuilder.seedList)
+		try {
+			if(seedContent) {
+				def tmpBinding = new Binding()
+				def tmpConfig = new GroovyShell(tmpBinding).evaluate(seedContent)
+				def tmpBuilder = new SeedBuilder()
+				tmpBuilder.seed(tmpBinding.getVariable('seed'))
+				if(tmpBuilder.seedList) {
+					rtn = [seedList:[], dependsOn:tmpBuilder.dependsOn, name:name, plugin:plugin]
+					rtn.seedList.addAll(tmpBuilder.seedList)
+				}
 			}
+		} catch(e) {
+			//log.error(e)
+			println("error building seed set ${name} - ${e}")
 		}
+		
 		return rtn
 	}
 
@@ -260,6 +308,7 @@ class SeedService {
 					if(tmpChanged == true) {
 						tmpObj.save(flush:true)
 						if(tmpObj.errors.hasErrors()) {
+							println(tmpObj.errors)
 							//log.error(tmpObj.errors)
 						}
 					}
@@ -268,7 +317,8 @@ class SeedService {
 				tmpObj = domain.newInstance()
 				applyChanges(tmpObj, config)
 				tmpObj.save(flush:true, insert:true)
-				if(tmpObj.errors.hasErrors()){
+				if(tmpObj.errors.hasErrors()) {
+					println(tmpObj.errors)
 					//log.error(tmpObj.errors)
 				}
 			}
@@ -367,6 +417,12 @@ class SeedService {
 			}
 		}
 		return seedFiles
+	}
+
+	def gormFlush() {
+		def session = sessionFactory.currentSession
+		session.flush()
+		propertyInstanceMap.get().clear()
 	}
 
 }
