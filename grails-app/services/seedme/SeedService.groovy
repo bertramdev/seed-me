@@ -8,7 +8,7 @@ import org.codehaus.groovy.grails.plugins.DomainClassGrailsPlugin
 
 class SeedService {
 
-	static transactional = false
+	//static transactional = false <- causes issues if using multiple datasources
 
 	def grailsApplication
 	def sessionFactory
@@ -316,11 +316,13 @@ class SeedService {
 			} else {
 				tmpObj = domain.newInstance()
 				applyChanges(tmpObj, config)
+
 				tmpObj.save(flush:true, insert:true)
 				if(tmpObj.errors.hasErrors()) {
 					println(tmpObj.errors)
 					//log.error(tmpObj.errors)
 				}
+
 			}
 			return tmpObj
 		} else {
