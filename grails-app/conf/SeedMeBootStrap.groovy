@@ -1,5 +1,5 @@
 
-class BootStrap {
+class SeedMeBootStrap {
 
 	def grailsApplication
 	def seedService
