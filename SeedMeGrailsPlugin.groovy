@@ -1,6 +1,6 @@
 class SeedMeGrailsPlugin {
 
-	def version        = "0.2.6"
+	def version        = "0.2.7"
 	def grailsVersion  = "2.0 > *"
 	def pluginExcludes = [
 		"grails-app/domain/seedme/Child.groovy",
@@ -22,13 +22,7 @@ class SeedMeGrailsPlugin {
 	def issueManagement = [ system: "GITHUB", url: "http://github.com/bertramdev/seed-me/issues" ]
 
 	def doWithApplicationContext = { applicationContext ->
-		def autoSeed = application.config.grails.plugin.seed.autoSeed
-		if(!(autoSeed instanceof Boolean)) {
-			autoSeed = false
-		}
-		if(autoSeed == true || System.getProperty('autoSeed', 'false') == 'true') {
-			applicationContext.seedService.installSeedData()
-		}
+		
 	}
 
 	def watchedResources = "file:./seed/*.groovy"
