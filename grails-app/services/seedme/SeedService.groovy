@@ -58,7 +58,7 @@ class SeedService {
 	private orderSeedSetsByDepends(seedSets) {
 		//sort them by depends on
 		def noDepends = seedSets.findAll{it.dependsOn == null || it.dependsOn.size() < 1}
-		def yesDepends = seedSets.findAll{it.dependsOn != null && it.dependsOn.size() > 1}
+		def yesDepends = seedSets.findAll{it.dependsOn != null && it.dependsOn.size() >= 1}
 		def rtnSets = noDepends
 		println("noDepends: ${noDepends.collect{it.name}}")
 		println("yesDepends: ${yesDepends.collect{it.name}}")
@@ -159,7 +159,7 @@ class SeedService {
 			//log.error(e)
 			println("error building seed set ${name} - ${e}")
 		}
-		
+
 		return rtn
 	}
 

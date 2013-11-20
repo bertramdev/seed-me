@@ -1,6 +1,6 @@
 class SeedMeGrailsPlugin {
 
-	def version        = "0.3.0"
+	def version        = "0.3.1"
 	def grailsVersion  = "2.0 > *"
 	def pluginExcludes = [
 		"grails-app/domain/seedme/Child.groovy",
@@ -22,7 +22,7 @@ class SeedMeGrailsPlugin {
 	def issueManagement = [ system: "GITHUB", url: "http://github.com/bertramdev/seed-me/issues" ]
 
 	def doWithApplicationContext = { applicationContext ->
-		
+
 	}
 
 	def watchedResources = "file:./seed/*.groovy"
