@@ -4,7 +4,7 @@ import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
 eventCreateWarStart = { name, stagingDir ->
 	event("StatusUpdate",["Moving Seeds Into War"])
 	def conf = config.grails.plugin.seed
-	def seedRoot = conf?.root ?: 'seed'
+	def seedRoot = conf?.root ?: 'src/seed'
 	def seedPaths = [:]
 	def excluded = conf.excludedPlugins ?: []
 	def seedRootFile = new File(seedRoot)

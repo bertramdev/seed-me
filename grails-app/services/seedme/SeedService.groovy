@@ -276,7 +276,7 @@ class SeedService {
 		if(grailsApplication.warDeployed)
 			grailsApplication.mainContext.getResource('seed').file.path
 		else
-			getConfig()?.root ?: 'seed'
+			getConfig()?.root ?: 'src/seed'
 	}
 
 	String getSeedPath(name) {
@@ -379,8 +379,7 @@ class SeedService {
 				}
 			}
 		} else {
-			def seedRoot = getConfig()?.root ?: 'seed'
-
+			def seedRoot = getConfig()?.root ?: 'src/seed'
 			for(plugin in GrailsPluginUtils.pluginInfos) {
 				if(!isPluginExcluded(plugin.name)) {
 					def seedPath = [plugin.pluginDir.getPath(), seedRoot].join(File.separator)
