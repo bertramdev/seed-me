@@ -6,7 +6,7 @@ SeedMe does not require any configuration
 
 Details
 ---------------------------
-SeedMe looks for seed files in a seed folder inside the project folder and in all included plugins.  Any files at the root of seed folder will be processed.
+SeedMe looks for seed files in a seed folder inside the project `src` folder and in all included plugins.  Any files at the root of seed folder will be processed.
 SeedMe also checks for a folder in the seed folder with a name that matches the current running environment and will process any files found in that folder.
 
 Seed DSL
