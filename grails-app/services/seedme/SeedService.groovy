@@ -214,7 +214,7 @@ class SeedService {
 				data[key] = findSeedObject(domain, value)
 			} else if(value instanceof List) {
 				data[key] = value.collect {
-					def tmpSeedMeta = it.remove(getMetaKey())
+					def tmpSeedMeta = it.clone().remove(getMetaKey())
 					tmpCriteria = it
 					if(tmpSeedMeta && tmpSeedMeta['criteria']==true) {
 						it.each{ k, val  ->
@@ -226,6 +226,7 @@ class SeedService {
 			}
 			//} else if (value instanceof Map && value.meta) {
 		} else if (value instanceof Map) {
+			value = value.clone() //Dont want to simply remove keys in case this value is reused elsewhere
 			def tmpMatchDomain = value.remove('domainClass')
 			def tmpObjectMeta = value.remove(getMetaKey())
 			if(tmpObjectMeta && tmpObjectMeta['criteria']==true) {

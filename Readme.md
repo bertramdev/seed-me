@@ -46,6 +46,10 @@ seed = {
 }
 ```
 
+**Running Seeds**
+By default the seeds do not execute at startup. This can be enabled by setting `grails.plugin.seed.autoSeed = true` or using system property with startup `-DautoSeed=true`. This allows you to selectivily control how/when your seeds are executed for particular environments. A script is also provided that can execute seeds by running `grails run-seed`.
+
+
 **Assigning properties by domain**
 In some cases (mainly legacy db schemas) an association may not directly exist between 2 domains however they are associated by a property. If a specific property needs to be the result of finding another domain with that property you may use a map with the following syntax:
 
