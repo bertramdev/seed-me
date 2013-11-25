@@ -238,6 +238,10 @@ class SeedService {
 			def seedObject = findSeedObject(tmpMatchDomain ?: key, value)
 			if(tmpObjectMeta && tmpObjectMeta['useId']==true)
 				seedObject = seedObject?.id
+			else if(tmpObjectMeta && tmpObjectMeta['useValue'])
+				seedObject = seedObject[tmpObjectMeta['useValue']]
+			else if(tmpObjectMeta && tmpObjectMeta['useClosure'])
+				seedObject = tmpObjectMeta['useClosure'](seedObject)
 			else if(tmpObjectMeta && tmpObjectMeta['property'])
 				seedObject = seedObject?."${tmpObjectMeta['property']}"
 			data[key] = seedObject
