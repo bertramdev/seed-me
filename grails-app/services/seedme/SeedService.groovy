@@ -48,6 +48,15 @@ class SeedService {
 	def installExternalSeed(seedContent) {
 		try {
 			def tmpSet = buildSeedSet('external', seedContent)
+			println("processing external seed")
+			tmpSet.seedList?.each { tmpSeed ->
+				try {
+					processSeedItem(tmpSeed)
+				} catch(e) {
+					println("error processing seed item ${tmpSeed} - ${e}")
+					throw e
+				}
+			}
 			processSeedItem(tmpSet)
 		} catch(e) {
 			//log.error(e)
@@ -267,6 +276,10 @@ class SeedService {
 		def tmpMeta = opts.remove(getMetaKey())
 		if(domain) {
 			def tmpInstance = domain.newInstance()
+			def tmpOpts = opts.clone()
+			tmpOpts.remove('useId')
+			tmpOpts.remove('useField')
+			tmpOpts.remove('useClosure')
 			rtn = tmpInstance.findWhere(opts)
 			if(tmpMeta?.useId == true)
 				rtn = rtn.id
