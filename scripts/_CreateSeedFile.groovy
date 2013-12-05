@@ -3,7 +3,7 @@ includeTargets << grailsScript("_GrailsBootstrap")
 includeTargets << new File(seedMePluginDir, "scripts/_SeedMeHelpers.groovy")
 
 createSeedFile = { params ->
-	def destinationPath = [basedir,"seed"]
+	def destinationPath = [basedir,"src/seed"]
 	if(params.environment) {
 		destinationPath << environment
 	}

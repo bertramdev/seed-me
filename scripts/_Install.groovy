@@ -1,1 +1,1 @@
-ant.mkdir(dir:"${basedir}/seed")
+ant.mkdir(dir:"${basedir}/src/seed")

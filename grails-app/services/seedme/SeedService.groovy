@@ -8,7 +8,7 @@ import org.codehaus.groovy.grails.plugins.DomainClassGrailsPlugin
 
 class SeedService {
 
-	//static transactional = false <- causes issues if using multiple datasources
+	static transactional = false
 
 	def grailsApplication
 	def sessionFactory
@@ -220,7 +220,9 @@ class SeedService {
 		def tmpCriteria = [:]
 		if(domain) {
 			if(value instanceof Map) {
-				data[key] = findSeedObject(domain, value)
+				def tmpObj = findSeedObject(domain, value) 
+				if(tmpObj)
+					data[key] = tmpObj
 			} else if(value instanceof List) {
 				data[key] = value.collect {
 					def tmpSeedMeta = it.clone().remove(getMetaKey())
@@ -253,7 +255,8 @@ class SeedService {
 				seedObject = tmpObjectMeta['useClosure'](seedObject)
 			else if(tmpObjectMeta && tmpObjectMeta['property'])
 				seedObject = seedObject?."${tmpObjectMeta['property']}"
-			data[key] = seedObject
+			if(seedObject)
+				data[key] = seedObject
 		} else if(value instanceof CharSequence) {
 			data[key] = new GStringTemplateEngine().createTemplate(value.toString()).make(getDomainBindingsForGString()).toString()
 		} else {
