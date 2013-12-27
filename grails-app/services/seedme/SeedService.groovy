@@ -20,28 +20,15 @@ class SeedService {
 		//log.info("seedService.installSeedData")
 		def seedFiles = getSeedFiles()
 		//log.info("seedService - processing ${seedFiles?.size()} files")
-		def seedSets    = buildSeedSets(seedFiles)
-		def newSeedSets = orderSeedSetsByDepends(seedSets)
-		//def seedList = []
-		newSeedSets?.each { tmpSet ->
-			try {
-				println("processing seed - ${tmpSet.name}")
-				tmpSet.seedList?.each { tmpSeed ->
-					//println("processing seed file ${tmpSeed.name}")
-					try {
-						processSeedItem(tmpSeed)
-					} catch(e) {
-						println("error processing seed item ${tmpSeed} - ${e}")
-						throw e
-					}
-				}
-				gormFlush()
-				//seedList.addAll(tmpSet.seedList)
-			} catch(setError) {
-				println("error processing seed set ${tmpSet?.name} - ${setError}")
-			}
+		def (seedSets, seedSetByPlugin)    = buildSeedSets(seedFiles)
+		// make a copy so we can remove items from one list as they are processed, another to
+		// iterate through
+		def seedSetsToRun = seedSets + [:]
+
+		seedSets.each { name, set ->
+			seedSetProcess(set, seedSetsToRun, seedSetByPlugin)
 		}
-		//log.debug("processing: ${seedList}")
+
 		println("installSeedData complete")
 	}
 
@@ -64,105 +51,36 @@ class SeedService {
 		}
 	}
 
-	private orderSeedSetsByDepends(seedSets) {
-		//sort them by depends on
-		def noDepends = seedSets.findAll{it.dependsOn == null || it.dependsOn.size() < 1}
-		def yesDepends = seedSets.findAll{it.dependsOn != null && it.dependsOn.size() >= 1}
-		def rtnSets = noDepends
-		println("noDepends: ${noDepends.collect{it.name}}")
-		println("yesDepends: ${yesDepends.collect{it.name}}")
-		def dependsMap = [:]
-		yesDepends.sort{it.dependsOn.size()}
-		yesDepends?.each { tmpSet ->
-			def maxIndex = 0
-			def yesIndex = yesDepends.findIndexOf{it.name == tmpSet.name}
-			tmpSet.dependsOn.each { tmpDepends ->
-				def tmpMatch
-				if(tmpDepends.contains('.')) {
-					def dependsArgs = tmpDepends.split(".")
-					def pluginName  = dependsArgs[0]
-					def seedName    = dependsArgs[1]
-					tmpMatch = yesDepends.findIndexOf{it.name == seedName && it.plugin == pluginName}
-				} else {
-					def matchCount = yesDepends.findAll{it.name == tmpDepends}
-					if(matchCount.size() > 1) {
-						tmpMatch = yesDepends.findIndexOf{it.name == tmpDepends && it.plugin == 'application'}
-					} else {
-						tmpMatch = yesDepends.findIndexOf{it.name == tmpDepends}
-					}
-				}
-				if(tmpMatch > -1) {
-					maxIndex = tmpMatch
-				}
-			}
-			tmpSet.maxIndex = maxIndex
-		}
-		yesDepends.sort{it.maxIndex}
-		rtnSets.addAll(yesDepends)
-		println("rtnSets: ${rtnSets.collect{it.name}}")
-		return rtnSets
-		/*seedSets.sort{it.dependsOn?.size()}
-		def newSeedSets = seedSets.clone()
-		seedSets?.each { tmpSet ->
-			if(tmpSet?.dependsOn?.size() > 0) {
-				def maxIndex = 0
-				def myIndex = newSeedSets.findIndexOf{it.name == tmpSet.name}
-				tmpSet.dependsOn.each { tmpDepends ->
-					def tmpMatch
-					if(tmpDepends.contains('.')) {
-						def dependsArgs = tmpDepends.split(".")
-						def pluginName  = dependsArgs[0]
-						def seedName    = dependsArgs[1]
-						tmpMatch = newSeedSets.findIndexOf{it.name == seedName && it.plugin == pluginName}
-					} else {
-						def matchCount = newSeedSets.findAll{it.name == tmpDepends}
-						if(matchCount.size() > 1) {
-							tmpMatch = newSeedSets.findIndexOf{it.name == tmpDepends && it.plugin == 'application'}
-						} else {
-							tmpMatch = newSeedSets.findIndexOf{it.name == tmpDepends}
-						}
-					}
-					if(tmpMatch > -1) {
-						maxIndex = tmpMatch
-					}
-				}
-				if(myIndex < maxIndex) {
-					def tmpOut = newSeedSets.remove(myIndex)
-					newSeedSets.putAt(maxIndex - 1, tmpOut)
-				}
-			}
-		}
-		return newSeedSets*/
-	}
-
 	private buildSeedSets(seedFiles) {
-		def seedSets = []
+		def seedSets = [:], byPlugin = [:]
 		seedFiles.each { seedFile ->
 			//change to call below method
 			def tmpFile    = seedFile.file
 			def pluginName = seedFile.plugin
 			def tmpContent = tmpFile.getText()
-			if(tmpContent) {
-				def tmpSeedSet = buildSeedSet(getSeedSetName(tmpFile.name), tmpContent, pluginName)
-				if(tmpSeedSet)
-					seedSets << tmpSeedSet
+			def tmpSeedName = getSeedSetName(tmpFile.name)
+			byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
+			def tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)
+			if(tmpSeedSet) {
+				def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
+				seedSets[tmpSetKey] = tmpSeedSet
+				byPlugin[pluginName][tmpSetKey] = tmpSeedSet
 			}
 		}
-		return seedSets
+
+		return [seedSets, byPlugin]
 	}
 
 	private buildSeedSet(name, seedContent, plugin = null) {
-		def rtn
+		def rtn = [seedList:[], dependsOn:[], name:name, plugin:plugin]
 		try {
-			if(seedContent) {
-				def tmpBinding = new Binding()
-				def tmpConfig = new GroovyShell(tmpBinding).evaluate(seedContent)
-				def tmpBuilder = new SeedBuilder()
-				tmpBuilder.seed(tmpBinding.getVariable('seed'))
-				if(tmpBuilder.seedList) {
-					rtn = [seedList:[], dependsOn:tmpBuilder.dependsOn, name:name, plugin:plugin]
-					rtn.seedList.addAll(tmpBuilder.seedList)
-				}
+			def tmpBinding = new Binding()
+			def tmpConfig = new GroovyShell(tmpBinding).evaluate(seedContent)
+			def tmpBuilder = new SeedBuilder()
+			tmpBuilder.seed(tmpBinding.getVariable('seed'))
+			if(tmpBuilder.seedList) {
+				rtn.dependsOn = tmpBuilder.dependsOn
+				rtn.seedList.addAll(tmpBuilder.seedList)
 			}
 		} catch(e) {
 			//log.error(e)
@@ -374,7 +292,8 @@ class SeedService {
 		tmpBind.invoke(tgt, 'bind', (Object[])tmpArgs)
 	}
 
-	String getSeedSetName(str) {
+	String getSeedSetName(str, plugin='') {
+		plugin = plugin ? "${plugin}." : ''
 		def rtn = str
 		def tmpIndex = rtn?.lastIndexOf('.')
 		if(tmpIndex > -1)
@@ -447,4 +366,47 @@ class SeedService {
 		propertyInstanceMap.get().clear()
 	}
 
+	/**
+	 * Depth-first traversal of seed dependencies.
+	 * @param set the seed set being processed.
+	 * @param seedSetsLeft the seed sets left to process.  As a seed is
+	 * processed it is removed from the list to avoid duplicate processing.
+	 * @param seedOrder an array built as the process runs.  Contains the
+	 * order in which the seed files were processed.
+	 */
+	private seedSetProcess(set, seedSetsLeft, seedSetsByPlugin, seedOrder=[]) {
+		if(!set) return
+		def setKey = buildSeedSetKey(set.name, set.plugin)
+
+		// if this set has dependencies, process them first
+		if(set.dependsOn) {
+			set.dependsOn.each { depSeed ->
+				// if the plugin is specified, construct the correct key
+				if(depSeed.contains('.')) {
+					def plugin = depSeed.substring(0, depSeed.indexOf('.'))
+					depSeed = buildSeedSetKey(plugin, depSeed.substring(plugin.length() + 1))
+				}
+				seedSetProcess(seedSetsLeft[depSeed], seedSetsLeft, seedOrder)
+			}
+		}
+
+		// if this seed set is in the list, run it
+		if(seedSetsLeft[setKey]) {
+			println "Processing ${setKey}"
+			try {
+				set.seedList.each this.&processSeedItem
+				seedSetsLeft[setKey] = null
+				seedSetsLeft.remove(setKey)
+				seedOrder << set.name
+			} catch(setError) {
+				println("error processing seed set ${set.name} - ${setError}")
+			}
+		}
+	}
+
+	private buildSeedSetKey(name, pluginName) {
+		// dependency names may already contain the plugin name, so check first
+		if(name.contains('.')) return name
+		else "${pluginName ? "${pluginName}." : ''}${name}"
+	}
 }
