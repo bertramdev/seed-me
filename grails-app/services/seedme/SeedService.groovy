@@ -2,6 +2,8 @@ package seedme
 
 import grails.util.Environment
 import groovy.text.GStringTemplateEngine
+import java.security.MessageDigest
+import javax.xml.bind.DatatypeConverter
 import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
 import org.codehaus.groovy.grails.web.metaclass.BindDynamicMethod
 import org.codehaus.groovy.grails.plugins.DomainClassGrailsPlugin
@@ -58,6 +60,7 @@ class SeedService {
 			def tmpFile    = seedFile.file
 			def pluginName = seedFile.plugin
 			def tmpContent = tmpFile.getText()
+
 			def tmpSeedName = getSeedSetName(tmpFile.name)
 			byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
 			byName[tmpSeedName] = byName[tmpSeedName] ?: []
@@ -78,6 +81,7 @@ class SeedService {
 		try {
 			def tmpBinding = new Binding()
 			def tmpConfig = new GroovyShell(tmpBinding).evaluate(seedContent)
+			rtn.checksum = DatatypeConverter.printBase64Binary(MessageDigest.getInstance('MD5').digest(seedContent.bytes))
 			def tmpBuilder = new SeedBuilder()
 			tmpBuilder.seed(tmpBinding.getVariable('seed'))
 			if(tmpBuilder.seedList) {
@@ -399,12 +403,17 @@ class SeedService {
 		}
 
 		// if this seed set is in the list, run it
-		if(seedSetsLeft[setKey]) {
+		def seedCheck = SeedMeChecksum.findOrCreateWhere(seedName: setKey)
+		if(seedSetsLeft[setKey] && 
+			 (seedCheck?.checksum != set.checksum)) {
 			try {
 				set.seedList.each this.&processSeedItem
+				seedCheck.checksum = set.checksum
+				seedCheck.save()
 				seedSetsLeft[setKey] = null
 				seedSetsLeft.remove(setKey)
 				seedOrder << set.name
+				gormFlush()
 			} catch(setError) {
 				println("error processing seed set ${set.name} - ${setError}")
 			}
