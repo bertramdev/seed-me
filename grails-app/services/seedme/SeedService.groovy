@@ -20,13 +20,13 @@ class SeedService {
 		//log.info("seedService.installSeedData")
 		def seedFiles = getSeedFiles()
 		//log.info("seedService - processing ${seedFiles?.size()} files")
-		def (seedSets, seedSetByPlugin)    = buildSeedSets(seedFiles)
+		def (seedSets, seedSetByPlugin, seedSetsByName)    = buildSeedSets(seedFiles)
 		// make a copy so we can remove items from one list as they are processed, another to
 		// iterate through
 		def seedSetsToRun = seedSets + [:]
 
 		seedSets.each { name, set ->
-			seedSetProcess(set, seedSetsToRun, seedSetByPlugin)
+			seedSetProcess(set, seedSetsToRun, seedSetByPlugin, seedSetsByName)
 		}
 
 		println("installSeedData complete")
@@ -52,7 +52,7 @@ class SeedService {
 	}
 
 	private buildSeedSets(seedFiles) {
-		def seedSets = [:], byPlugin = [:]
+		def seedSets = [:], byPlugin = [:], byName = [:]
 		seedFiles.each { seedFile ->
 			//change to call below method
 			def tmpFile    = seedFile.file
@@ -60,15 +60,17 @@ class SeedService {
 			def tmpContent = tmpFile.getText()
 			def tmpSeedName = getSeedSetName(tmpFile.name)
 			byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
+			byName[tmpSeedName] = byName[tmpSeedName] ?: []
 			def tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)
 			if(tmpSeedSet) {
 				def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
 				seedSets[tmpSetKey] = tmpSeedSet
 				byPlugin[pluginName][tmpSetKey] = tmpSeedSet
+				byName[tmpSeedName] << tmpSeedSet
 			}
 		}
 
-		return [seedSets, byPlugin]
+		return [seedSets, byPlugin, byName]
 	}
 
 	private buildSeedSet(name, seedContent, plugin = null) {
@@ -374,25 +376,30 @@ class SeedService {
 	 * @param seedOrder an array built as the process runs.  Contains the
 	 * order in which the seed files were processed.
 	 */
-	private seedSetProcess(set, seedSetsLeft, seedSetsByPlugin, seedOrder=[]) {
+	private seedSetProcess(set, seedSetsLeft, seedSetsByPlugin, seedSetsByName, seedOrder=[]) {
 		if(!set) return
 		def setKey = buildSeedSetKey(set.name, set.plugin)
 
+		println "Processing ${setKey}"
+
 		// if this set has dependencies, process them first
 		if(set.dependsOn) {
+			// println "\tdependencies : ${set.dependsOn.join(', ')}"
 			set.dependsOn.each { depSeed ->
+				def deps = []
 				// if the plugin is specified, construct the correct key
 				if(depSeed.contains('.')) {
 					def plugin = depSeed.substring(0, depSeed.indexOf('.'))
-					depSeed = buildSeedSetKey(plugin, depSeed.substring(plugin.length() + 1))
+					deps = [buildSeedSetKey(plugin, depSeed.substring(plugin.length() + 1))]
+				} else { // in case of ambiguity find all seeds with matching name
+					deps = seedSetsByName[depSeed].collect { "${it.plugin}.${it.name}"}
 				}
-				seedSetProcess(seedSetsLeft[depSeed], seedSetsLeft, seedOrder)
+				deps.each {dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByName, seedOrder)}
 			}
 		}
 
 		// if this seed set is in the list, run it
 		if(seedSetsLeft[setKey]) {
-			println "Processing ${setKey}"
 			try {
 				set.seedList.each this.&processSeedItem
 				seedSetsLeft[setKey] = null
