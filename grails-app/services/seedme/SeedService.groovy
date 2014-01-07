@@ -58,19 +58,18 @@ class SeedService {
 		seedFiles.each { seedFile ->
 			//change to call below method
 			def tmpFile    = seedFile.file
-			def pluginName = seedFile.plugin
+			def pluginName = seedFile.plugin ?: 'application'
 			def tmpContent = tmpFile.getText()
 
 			def tmpSeedName = getSeedSetName(tmpFile.name)
 			byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
 			byName[tmpSeedName] = byName[tmpSeedName] ?: []
 			def tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)
-			if(tmpSeedSet) {
-				def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
-				seedSets[tmpSetKey] = tmpSeedSet
-				byPlugin[pluginName][tmpSetKey] = tmpSeedSet
-				byName[tmpSeedName] << tmpSeedSet
-			}
+			def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
+			seedSets[tmpSetKey] = tmpSeedSet
+			byPlugin[pluginName][tmpSetKey] = tmpSeedSet
+			byName[tmpSeedName] << tmpSeedSet
+
 		}
 
 		return [seedSets, byPlugin, byName]
@@ -84,10 +83,9 @@ class SeedService {
 			rtn.checksum = DatatypeConverter.printBase64Binary(MessageDigest.getInstance('MD5').digest(seedContent.bytes))
 			def tmpBuilder = new SeedBuilder()
 			tmpBuilder.seed(tmpBinding.getVariable('seed'))
-			if(tmpBuilder.seedList) {
-				rtn.dependsOn = tmpBuilder.dependsOn
-				rtn.seedList.addAll(tmpBuilder.seedList)
-			}
+			rtn.dependsOn = tmpBuilder.dependsOn
+			rtn.seedList.addAll(tmpBuilder.seedList)
+
 		} catch(e) {
 			//log.error(e)
 			println("error building seed set ${name} - ${e}")
@@ -383,9 +381,6 @@ class SeedService {
 	private seedSetProcess(set, seedSetsLeft, seedSetsByPlugin, seedSetsByName, seedOrder=[]) {
 		if(!set) return
 		def setKey = buildSeedSetKey(set.name, set.plugin)
-
-		println "Processing ${setKey}"
-
 		// if this set has dependencies, process them first
 		if(set.dependsOn) {
 			// println "\tdependencies : ${set.dependsOn.join(', ')}"
@@ -396,9 +391,10 @@ class SeedService {
 					def plugin = depSeed.substring(0, depSeed.indexOf('.'))
 					deps = [buildSeedSetKey(plugin, depSeed.substring(plugin.length() + 1))]
 				} else { // in case of ambiguity find all seeds with matching name
-					deps = seedSetsByName[depSeed].collect { "${it.plugin}.${it.name}"}
+					def sets = seedSetsByName[depSeed]
+					deps = sets.collect { "${it.plugin}.${it.name}" }
 				}
-				deps.each {dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByName, seedOrder)}
+				deps.each {dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByPlugin, seedSetsByName, seedOrder)}
 			}
 		}
 
@@ -406,6 +402,7 @@ class SeedService {
 		def seedCheck = SeedMeChecksum.findOrCreateWhere(seedName: setKey)
 		if(seedSetsLeft[setKey] && 
 			 (seedCheck?.checksum != set.checksum)) {
+			println "Processing $setKey"
 			try {
 				set.seedList.each this.&processSeedItem
 				seedCheck.checksum = set.checksum
