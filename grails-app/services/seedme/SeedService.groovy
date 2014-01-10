@@ -405,14 +405,13 @@ class SeedService {
 		}
 
 		// if this seed set is in the list, run it
-		def seedCheck = SeedMeChecksum.findOrCreateWhere(seedName: setKey)
+		def seedCheck = checkChecksum(setKey)
 		if(seedSetsLeft[setKey] && 
 			 (seedCheck?.checksum != set.checksum)) {
 			println "Processing $setKey"
 			try {
 				set.seedList.each this.&processSeedItem
-				seedCheck.checksum = set.checksum
-				seedCheck.save()
+				updateChecksum(seedCheck, set.checksum)
 				seedSetsLeft[setKey] = null
 				seedSetsLeft.remove(setKey)
 				seedOrder << set.name
@@ -420,6 +419,25 @@ class SeedService {
 			} catch(setError) {
 				println("error processing seed set ${set.name} - ${setError}")
 			}
+		}
+	}
+
+	private checkChecksum(seedName) {
+		def rtn = [checksum:null]
+		// don't require that the domain be available, e.g. if the user of seed doesn't have
+		// create privileges don't blow up
+		try {
+			rtn = SeedMeChecksum.findOrCreateWhere(seedName: seedName)
+		} catch(e) {
+		}
+	}
+
+	private updateChecksum(seedCheck, newChecksum) {
+		// again, don't require that the SeedMeChecksum domain be around
+		try {
+			seedCheck.checksum = newChecksum
+			seedCheck.save()
+		} catch(e) {
 		}
 	}
 
