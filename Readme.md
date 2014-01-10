@@ -2,7 +2,16 @@ SeedMe is a simple plugin that was created to provide an easy way to add config 
 
 Configuring for Development
 ---------------------------
-SeedMe does not require any configuration
+SeedMe does not require any configuration, but there are several configuration options:
+
+```groovy
+grails.plugin.seed.autoSeed=false
+grails.plugin.seed.excludedPlugins=[] // plugins to exclude
+grails.plugin.seed.excludedSeedFiles=[] // Seed files to exclude
+grails.plugin.seed.root='src/seed' // 
+grails.plugin.seed.metaKey='meta' // seed map key for meta information
+grails.plugin.seed.environment='[Grails environment name]'
+```
 
 Details
 ---------------------------

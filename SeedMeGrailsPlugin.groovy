@@ -1,8 +1,9 @@
 class SeedMeGrailsPlugin {
 
-	def version        = "0.4.1"
+	def version        = "0.4.2"
 	def grailsVersion  = "2.0 > *"
 	def pluginExcludes = [
+		"src/seed/*",
 		"grails-app/domain/seedme/Child.groovy",
 		"grails-app/domain/seedme/ChildParentRequired.groovy",
 		"grails-app/domain/seedme/ParentHasManyChildren.groovy",
@@ -18,7 +19,8 @@ class SeedMeGrailsPlugin {
 		[name: 'Brian Wheeler', email: 'bwheeler@bcap.com'],
 		[name: 'David Estes', email: 'destes@bcap.com'],
 		[name: 'Jordon Saardchit',email: 'jsaardchit@bcap.com'],
-		[name: 'Jeremy Crosbie',email: 'jcrosbie@bcap.com']]
+		[name: 'Jeremy Crosbie',email: 'jcrosbie@bcap.com'],
+		[name: 'Jeremy Leng',email: 'jleng@bcap.com']]
 	def scm             = [ url: "http://github.com/bertramdev/seed-me" ]
 	def issueManagement = [ system: "GITHUB", url: "http://github.com/bertramdev/seed-me/issues" ]
 

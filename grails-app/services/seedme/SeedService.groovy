@@ -7,6 +7,7 @@ import javax.xml.bind.DatatypeConverter
 import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
 import org.codehaus.groovy.grails.web.metaclass.BindDynamicMethod
 import org.codehaus.groovy.grails.plugins.DomainClassGrailsPlugin
+import org.apache.commons.io.FilenameUtils as FNU
 
 class SeedService {
 
@@ -310,6 +311,11 @@ class SeedService {
 		return excluded.find { it == name}
 	}
 
+	private boolean isSeedFileExcluded(name) {
+		def excluded = getConfig().excludedSeedFiles ?: []
+		return excluded.find { it == name || it == FNU.getBaseName(name) || it == FNU.getName(name)}
+	}
+
 	private getSeedPathsByPlugin() {
 		def seedPaths = [:]
 		if(grailsApplication.warDeployed) {
@@ -348,7 +354,7 @@ class SeedService {
 			def pluginName = seedPath.key
 			if(seedFolder.exists()) {
 				seedFolder?.eachFile { tmpFile ->
-					if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy'))
+					if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy') && !isSeedFileExcluded(tmpFile.name))
 						seedFiles << [file: tmpFile, plugin: pluginName]
 				}
 				seedFolder?.eachDir { tmpFolder ->

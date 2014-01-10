@@ -1,6 +1,6 @@
 includeTargets << grailsScript("_GrailsBootstrap")
 
-target(runSeed: "Creates a seed file") {
+target(runSeed: "Installs seed files") {
 	depends(configureProxy,compile, packageApp, bootstrap)
 
 	appCtx.seedService.installSeedData()

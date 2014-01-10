@@ -5,6 +5,7 @@ grails {
 			environment = null
 			metaKey = 'meta'
 			autoSeed = false
+			excludedSeedFiles = ['CheckSums']
 		}
 	}
 }
