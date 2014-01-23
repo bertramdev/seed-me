@@ -8,7 +8,7 @@ SeedMe does not require any configuration, but there are several configuration o
 grails.plugin.seed.autoSeed=false
 grails.plugin.seed.excludedPlugins=[] // plugins to exclude
 grails.plugin.seed.excludedSeedFiles=[] // Seed files to exclude
-grails.plugin.seed.root='src/seed' // 
+grails.plugin.seed.root='src/seed' //
 grails.plugin.seed.metaKey='meta' // seed map key for meta information
 grails.plugin.seed.environment='[Grails environment name]'
 ```
@@ -16,7 +16,7 @@ grails.plugin.seed.environment='[Grails environment name]'
 Details
 ---------------------------
 SeedMe looks for seed files in a seed folder inside the project `src` folder and in all included plugins.  Any files at the root of seed folder will be processed.
-SeedMe also checks for a folder in the seed folder with a name that matches the current running environment and will process any files found in that folder.
+SeedMe also checks for a folder in the seed folder with a name that matches the current running environment and will process any files found in that folder. The plugin also, only runs seeds that have not previously been run by maintaining a checksum of the seed files in the database.
 
 Seed DSL
 
