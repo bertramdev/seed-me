@@ -101,7 +101,7 @@ SeedMe supports the ability to control seed load order across all your plugins w
 
 ```groovy
 seed = {
-	dependsOn = ['Authors']
+	dependsOn ['Authors']
 	book(meta:[key:'name'], name: 'How to seed your database', date: new Date(), authors: [[name: 'David'], [name: 'John']])
 }
 ```
@@ -110,7 +110,7 @@ seed = {
 
 ```groovy
 seed = {
-	dependsOn = ['AuthorCore.Authors']
+	dependsOn ['AuthorCore.Authors']
 	book(meta:[key:'name'], name: 'How to seed your database', date: new Date(), authors: [[name: 'David'], [name: 'John']])
 }
 ```
