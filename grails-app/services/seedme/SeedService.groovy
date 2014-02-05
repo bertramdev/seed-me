@@ -401,6 +401,7 @@ class SeedService {
 					def sets = seedSetsByName[depSeed]
 					deps = sets.collect { "${it.plugin}.${it.name}" }
 				}
+				if(!deps) println("cannot resolve dependency (${depSeed})")
 				deps.each {dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByPlugin, seedSetsByName, seedOrder)}
 			}
 		}
