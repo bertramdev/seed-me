@@ -54,6 +54,34 @@ class SeedService {
 		}
 	}
 
+
+	/**
+	* Allows a closure of seed DSL to be passed to execute, Useful for tests
+	* @param Closure seedData - Expects a Closure to be passed in with the seed me DSL
+	*/
+	def installSeed(seedData) {
+		try {
+			def tmpSet = [seedList:[], dependsOn:[], name:'name', plugin:null]
+			def tmpBuilder = new SeedBuilder()
+			tmpBuilder.seed(seedData)
+			tmpSet.dependsOn = tmpBuilder.dependsOn
+			tmpSet.seedList.addAll(tmpBuilder.seedList)
+			println("processing inline seed")
+			tmpSet.seedList?.each { tmpSeed ->
+				try {
+					processSeedItem(tmpSeed)
+				} catch(e) {
+					println("error processing seed item ${tmpSeed} - ${e}")
+					throw e
+				}
+			}
+			processSeedItem(tmpSet)
+		} catch(e) {
+			//log.error(e)
+			throw e
+		}
+	}
+
 	private buildSeedSets(seedFiles) {
 		def seedSets = [:], byPlugin = [:], byName = [:]
 		seedFiles.each { seedFile ->
