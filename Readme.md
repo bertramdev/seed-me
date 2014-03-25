@@ -115,3 +115,14 @@ seed = {
 }
 ```
 
+**Using in Integration Tests**
+
+SeedMe provides an interface for writing the seed-me DSL right into your tests. Simply use the seedService and call
+
+```groovy
+seedService.installSeed {
+	author(meta:[key:'name'], name: 'John', description:'John is a great author')
+}
+```
+
+
