@@ -235,7 +235,7 @@ class SeedService {
 			tmpOpts.remove('useId')
 			tmpOpts.remove('useField')
 			tmpOpts.remove('useClosure')
-			rtn = tmpInstance.findWhere(opts)
+			rtn = tmpInstance.findWhere(opts,[readOnly:true])
 			if(tmpMeta?.useId == true)
 				rtn = rtn.id
 			if(tmpMeta?.containsKey('property')) {
