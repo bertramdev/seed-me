@@ -399,8 +399,8 @@ class SeedService {
 		return seedFiles
 	}
 
-	def gormFlush() {
-		def session = sessionFactory.currentSession
+	def gormFlush(session) {
+		session = session ?: sessionFactory.currentSession
 		session.flush()
 		propertyInstanceMap.get().clear()
 	}
@@ -439,16 +439,19 @@ class SeedService {
 		if(seedSetsLeft[setKey] && 
 			 (seedCheck?.checksum != set.checksum)) {
 			println "Processing $setKey"
-			try {
-				set.seedList.each this.&processSeedItem
-				updateChecksum(seedCheck, set.checksum)
-				seedSetsLeft[setKey] = null
-				seedSetsLeft.remove(setKey)
-				seedOrder << set.name
-				gormFlush()
-			} catch(setError) {
-				println("error processing seed set ${set.name} - ${setError}")
+			SeedMeChecksum.withNewSession { session -> 
+				try {
+					set.seedList.each this.&processSeedItem
+					updateChecksum(seedCheck, set.checksum)
+					seedSetsLeft[setKey] = null
+					seedSetsLeft.remove(setKey)
+					seedOrder << set.name
+					gormFlush(session)
+				} catch(setError) {
+					println("error processing seed set ${set.name} - ${setError}")
+				}
 			}
+			
 		}
 	}
 

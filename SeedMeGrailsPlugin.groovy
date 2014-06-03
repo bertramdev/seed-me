@@ -1,6 +1,6 @@
 class SeedMeGrailsPlugin {
 
-	def version        = "0.4.6"
+	def version        = "0.4.7"
 	def grailsVersion  = "2.0 > *"
 	def pluginExcludes = [
 		"src/seed/*",
