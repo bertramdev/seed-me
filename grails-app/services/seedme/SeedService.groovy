@@ -179,8 +179,11 @@ class SeedService {
 					value.remove('domainClass')
 				}
 				def tmpObj = findSeedObject(domain, value) 
-				if(tmpObj)
+				if(tmpObj) {
 					data[key] = tmpObj
+				} else {
+					log.warn("Seed: Unable to locate domain Object ${domain} with criteria ${value}");
+				}
 			} else if(value instanceof List) {
 				data[key] = value.collect {
 					def tmpSeedMeta = it.clone().remove(getMetaKey())
@@ -190,7 +193,11 @@ class SeedService {
 							setSeedValue(tmpCriteria,k,val)
 						}
 					}
-					findSeedObject(domain, tmpCriteria)
+					def tmpObj = findSeedObject(domain, tmpCriteria)
+					if(!tmpObj) {
+						log.warn("Seed: Unable to locate domain Object ${domain} with criteria ${tmpCriteria}");
+					} 
+					return tmpObj
 				}.findAll{it!=null}
 			}
 			//} else if (value instanceof Map && value.meta) {
@@ -213,8 +220,11 @@ class SeedService {
 				seedObject = tmpObjectMeta['useClosure'](seedObject)
 			else if(tmpObjectMeta && tmpObjectMeta['property'])
 				seedObject = seedObject?."${tmpObjectMeta['property']}"
-			if(seedObject)
+			if(seedObject) {
 				data[key] = seedObject
+			} else {
+				log.warn("Seed: Unable to locate domain Object ${tmpMatchDomain ?: key} with criteria ${value}");
+			}
 		} else if(value instanceof CharSequence) {
 			data[key] = new GStringTemplateEngine().createTemplate(value.toString()).make(getDomainBindingsForGString()).toString()
 		} else if(value instanceof Closure) {
