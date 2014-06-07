@@ -146,7 +146,7 @@ class SeedService {
 							}
 						} else if(tmpProp.isHasOne() || tmpProp.isOneToOne()) {
 							if(value instanceof Map) {
-								setSeedValue(saveData, key, value, subDomain)
+								setSeedValue(saveData, key, value)
 							}
 						} else if(tmpProp.isManyToMany()) {
 							if(value instanceof Map) {
@@ -154,7 +154,7 @@ class SeedService {
 							}
 						} else if(tmpProp.isManyToOne()) {
 							if(value instanceof Map) {
-								setSeedValue(saveData, key, value, subDomain)
+								setSeedValue(saveData, key, value)
 							}
 						} else {
 							log.warn "Association is not handled thus this object may not be seeded"
@@ -222,7 +222,7 @@ class SeedService {
 				seedObject = seedObject?."${tmpObjectMeta['property']}"
 			if(seedObject) {
 				data[key] = seedObject
-			} else {
+			} else if(key != getMetaKey()) {
 				log.warn("Seed: Unable to locate domain Object ${tmpMatchDomain ?: key} with criteria ${value}");
 			}
 		} else if(value instanceof CharSequence) {
@@ -248,12 +248,13 @@ class SeedService {
 			domain = grailsApplication.getArtefactByLogicalPropertyName('Domain', domain.toString())?.getClazz()
 		def tmpMeta = opts.remove(getMetaKey())
 		if(domain) {
-			// def tmpInstance = domain.newInstance()
+			def tmpInstance = domain.newInstance()
 			def tmpOpts = opts.clone()
 			tmpOpts.remove('useId')
 			tmpOpts.remove('useField')
 			tmpOpts.remove('useClosure')
-			rtn = domain.findWhere(opts,[readOnly:true])
+			tmpOpts.remove('domainClass')
+			rtn = tmpInstance.findWhere(opts,[readOnly:true])
 			if(rtn) {
 				if(tmpMeta?.useId == true)
 					rtn = rtn.id
