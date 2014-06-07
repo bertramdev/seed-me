@@ -111,7 +111,7 @@ class SeedService {
 		try {
 			def tmpBinding = new Binding()
 			tmpBinding.setVariable("grailsApplication", grailsApplication)
-			def tmpConfig = new GroovyShell(tmpBinding).evaluate(seedContent)
+			def tmpConfig = new GroovyShell(tmpBinding).evaluate(seedContent,plugin ? "${plugin}:${name}" : name)
 			rtn.checksum = DatatypeConverter.printBase64Binary(MessageDigest.getInstance('MD5').digest(seedContent.bytes))
 			def tmpBuilder = new SeedBuilder()
 			tmpBuilder.seed(tmpBinding.getVariable('seed'))
