@@ -7,8 +7,10 @@ import javax.xml.bind.DatatypeConverter
 import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
 import org.codehaus.groovy.grails.web.metaclass.BindDynamicMethod
 import org.codehaus.groovy.grails.plugins.DomainClassGrailsPlugin
+import groovy.util.logging.Log4j
 import org.apache.commons.io.FilenameUtils as FNU
 
+@Log4j
 class SeedService {
 
 	static transactional = false
@@ -20,9 +22,9 @@ class SeedService {
 	void installSeedData() {
 		// GRAILS 2.3.1 ISSUE?
 		// Caused by MissingPropertyException: No such property: log for class: seedme.SeedService
-		//log.info("seedService.installSeedData")
+		log.info("seedService.installSeedData")
 		def seedFiles = getSeedFiles()
-		//log.info("seedService - processing ${seedFiles?.size()} files")
+		log.info("seedService - processing ${seedFiles?.size()} files")
 		def (seedSets, seedSetByPlugin, seedSetsByName)    = buildSeedSets(seedFiles)
 		// make a copy so we can remove items from one list as they are processed, another to
 		// iterate through
@@ -43,7 +45,7 @@ class SeedService {
 				try {
 					processSeedItem(tmpSeed)
 				} catch(e) {
-					println("error processing seed item ${tmpSeed} - ${e}")
+					log.error("error processing seed item ${tmpSeed}",e)
 					throw e
 				}
 			}
@@ -66,12 +68,12 @@ class SeedService {
 			tmpBuilder.seed(seedData)
 			tmpSet.dependsOn = tmpBuilder.dependsOn
 			tmpSet.seedList.addAll(tmpBuilder.seedList)
-			println("processing inline seed")
+			log.info("processing inline seed")
 			tmpSet.seedList?.each { tmpSeed ->
 				try {
 					processSeedItem(tmpSeed)
 				} catch(e) {
-					println("error processing seed item ${tmpSeed} - ${e}")
+					log.error("error processing seed item ${tmpSeed}",e)
 					throw e
 				}
 			}
@@ -117,8 +119,7 @@ class SeedService {
 			rtn.seedList.addAll(tmpBuilder.seedList)
 
 		} catch(e) {
-			//log.error(e)
-			println("error building seed set ${name} - ${e}")
+			log.error("error building seed set ${name}",e)
 		}
 
 		return rtn
@@ -144,7 +145,7 @@ class SeedService {
 							}
 						} else if(tmpProp.isHasOne() || tmpProp.isOneToOne()) {
 							if(value instanceof Map) {
-								setSeedValue(saveData, key, value)
+								setSeedValue(saveData, key, value, subDomain)
 							}
 						} else if(tmpProp.isManyToMany()) {
 							if(value instanceof Map) {
@@ -152,10 +153,10 @@ class SeedService {
 							}
 						} else if(tmpProp.isManyToOne()) {
 							if(value instanceof Map) {
-								setSeedValue(saveData, key, value)
+								setSeedValue(saveData, key, value, subDomain)
 							}
 						} else {
-							//log.warn "association is not handled thus this object may not be seeded"
+							log.warn "Association is not handled thus this object may not be seeded"
 						}
 					} else {
 						setSeedValue(saveData, key, value)
@@ -211,6 +212,8 @@ class SeedService {
 				data[key] = seedObject
 		} else if(value instanceof CharSequence) {
 			data[key] = new GStringTemplateEngine().createTemplate(value.toString()).make(getDomainBindingsForGString()).toString()
+		} else if(value instanceof Closure) {
+			data[key] = value.call(data)
 		} else {
 			data[key] = value
 		}
@@ -279,22 +282,32 @@ class SeedService {
 				if(opts.update == null || opts.update == true) {
 					def tmpChanged = applyChanges(tmpObj, config, key)
 					if(tmpChanged == true) {
-						tmpObj.save(flush:true)
-						if(tmpObj.errors.hasErrors()) {
-							println(tmpObj.errors)
-							//log.error(tmpObj.errors)
+						if(!tmpObj.save(flush:true)) {
+							def errors = []
+							if(tmpObj.errors.hasErrors()) {
+								errors = tmpObj.errors.allErrors.collect {err->
+									" - " + messageSource.getMessage(err,Locale.ENGLISH) // need to get real local
+						        }
+							}
+							log.error("Seed Error Saving ${tmpObj.toString()}\n${errors.join("\n")}")
 						}
+						
 					}
 				}
 			} else {
 				tmpObj = domain.newInstance()
 				applyChanges(tmpObj, config)
 
-				tmpObj.save(flush:true, insert:true)
-				if(tmpObj.errors.hasErrors()) {
-					println(tmpObj.errors)
-					//log.error(tmpObj.errors)
+				if(!tmpObj.save(flush:true, insert:true)) {
+					def errors = []
+					if(tmpObj.errors.hasErrors()) {
+						errors = tmpObj.errors.allErrors.collect {err->
+							" - " + messageSource.getMessage(err,Locale.ENGLISH) // need to get real local
+				        }
+					}
+					log.error("Seed Error Inserting ${tmpObj.toString()}\n${errors.join("\n")}")
 				}
+				
 
 			}
 			return tmpObj
@@ -429,7 +442,9 @@ class SeedService {
 					def sets = seedSetsByName[depSeed]
 					deps = sets.collect { "${it.plugin}.${it.name}" }
 				}
-				if(!deps) println("cannot resolve dependency (${depSeed})")
+				if(!deps) {
+					log.warn("Cannot Resolve Dependency (${depSeed})")
+				}
 				deps.each {dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByPlugin, seedSetsByName, seedOrder)}
 			}
 		}
@@ -448,7 +463,7 @@ class SeedService {
 					seedOrder << set.name
 					gormFlush(session)
 				} catch(setError) {
-					println("error processing seed set ${set.name} - ${setError}")
+					log.error("error processing seed set ${set.name}",setError)
 				}
 			}
 			
