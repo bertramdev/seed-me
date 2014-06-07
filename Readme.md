@@ -55,6 +55,22 @@ seed = {
 }
 ```
 
+**Assigning Values by Closure
+
+In some cases, it may be necessary to generate the values within context of the seed run. (For example, using enumerators or string values that are combined from queries to other domains).
+
+```groovy
+seed = {
+	author(meta:[key:'name'], name: 'David', description: 'Author Bio Here')
+
+	book(meta:[key:'name'], name: 'How to seed your database', date: new Date(), author: [name: 'David'], 
+		status: { domain ->
+			return domain.ACTIVE
+		}
+	)
+}
+```
+
 **Running Seeds**
 By default the seeds do not execute at startup. This can be enabled by setting `grails.plugin.seed.autoSeed = true` or using system property with startup `-DautoSeed=true`. This allows you to selectivily control how/when your seeds are executed for particular environments. A script is also provided that can execute seeds by running `grails run-seed`.
 
