@@ -173,6 +173,10 @@ class SeedService {
 		def tmpCriteria = [:]
 		if(domain) {
 			if(value instanceof Map) {
+				value = value.clone()
+				if(value.containsKey('domainClass')) {
+					value.remove('domainClass')
+				}
 				def tmpObj = findSeedObject(domain, value) 
 				if(tmpObj)
 					data[key] = tmpObj
