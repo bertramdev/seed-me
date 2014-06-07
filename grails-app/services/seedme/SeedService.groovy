@@ -17,6 +17,7 @@ class SeedService {
 
 	def grailsApplication
 	def sessionFactory
+	def messageSource
 	def propertyInstanceMap = DomainClassGrailsPlugin.PROPERTY_INSTANCE_MAP
 
 	void installSeedData() {
