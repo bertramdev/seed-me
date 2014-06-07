@@ -248,17 +248,20 @@ class SeedService {
 			domain = grailsApplication.getArtefactByLogicalPropertyName('Domain', domain.toString())?.getClazz()
 		def tmpMeta = opts.remove(getMetaKey())
 		if(domain) {
-			def tmpInstance = domain.newInstance()
+			// def tmpInstance = domain.newInstance()
 			def tmpOpts = opts.clone()
 			tmpOpts.remove('useId')
 			tmpOpts.remove('useField')
 			tmpOpts.remove('useClosure')
-			rtn = tmpInstance.findWhere(opts,[readOnly:true])
-			if(tmpMeta?.useId == true)
-				rtn = rtn.id
-			if(tmpMeta?.containsKey('property')) {
-				rtn = rtn."${tmpMeta.property}"
+			rtn = domain.findWhere(opts,[readOnly:true])
+			if(rtn) {
+				if(tmpMeta?.useId == true)
+					rtn = rtn.id
+				if(tmpMeta?.containsKey('property')) {
+					rtn = rtn."${tmpMeta.property}"
+				}
 			}
+			
 		}
 		return rtn
 	}
