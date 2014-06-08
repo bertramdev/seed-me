@@ -225,7 +225,7 @@ class SeedService {
 			} else if(key != getMetaKey()) {
 				log.warn("Seed: Unable to locate domain Object ${tmpMatchDomain ?: key} with criteria ${value}");
 			}
-		} else if(value instanceof CharSequence) {
+		} else if(value instanceof CharSequence && value.toString().indexOf('$') >= 0) {
 			data[key] = new GStringTemplateEngine().createTemplate(value.toString()).make(getDomainBindingsForGString()).toString()
 		} else if(value instanceof Closure) {
 			data[key] = value.call(data)
@@ -312,6 +312,8 @@ class SeedService {
 						}
 						
 					}
+					tmpObj.discard()
+					
 				}
 			} else {
 				tmpObj = domain.newInstance()
@@ -327,8 +329,6 @@ class SeedService {
 					log.error("Seed Error Inserting ${tmpObj.toString()}\n${errors.join("\n")}")
 				}
 				tmpObj.discard()
-				
-
 			}
 			return tmpObj
 		} else {
@@ -434,6 +434,7 @@ class SeedService {
 
 	def gormFlush(session) {
 		session = session ?: sessionFactory.currentSession
+		session.clear()
 		session.flush()
 		propertyInstanceMap.get().clear()
 	}
@@ -473,7 +474,7 @@ class SeedService {
 		def seedCheck = checkChecksum(setKey)
 		if(seedSetsLeft[setKey] && 
 			 (seedCheck?.checksum != set.checksum)) {
-			println "Processing $setKey"
+			log.info "Processing $setKey"
 			SeedMeChecksum.withNewSession { session -> 
 				try {
 					set.seedList.each this.&processSeedItem
