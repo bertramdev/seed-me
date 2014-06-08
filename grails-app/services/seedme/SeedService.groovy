@@ -326,6 +326,7 @@ class SeedService {
 					}
 					log.error("Seed Error Inserting ${tmpObj.toString()}\n${errors.join("\n")}")
 				}
+				tmpObj.discard()
 				
 
 			}
