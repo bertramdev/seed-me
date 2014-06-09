@@ -212,6 +212,9 @@ class SeedService {
 				value = tmpCriteria
 			}
 			def seedObject = findSeedObject(tmpMatchDomain ?: key, value)
+			if(!seedObject && key != getMetaKey()) {
+				log.warn("Seed: Unable to locate domain Object ${tmpMatchDomain ?: key} with criteria ${value}");
+			}
 			if(tmpObjectMeta && tmpObjectMeta['useId']==true)
 				seedObject = seedObject?.id
 			else if(tmpObjectMeta && tmpObjectMeta['useValue'])
@@ -222,9 +225,7 @@ class SeedService {
 				seedObject = seedObject?."${tmpObjectMeta['property']}"
 			if(seedObject) {
 				data[key] = seedObject
-			} else if(key != getMetaKey()) {
-				log.warn("Seed: Unable to locate domain Object ${tmpMatchDomain ?: key} with criteria ${value}");
-			}
+			} 
 		} else if(value instanceof CharSequence && value.toString().indexOf('$') >= 0) {
 			data[key] = new GStringTemplateEngine().createTemplate(value.toString()).make(getDomainBindingsForGString()).toString()
 		} else if(value instanceof Closure) {
