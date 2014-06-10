@@ -38,6 +38,36 @@ class SeedService {
 		println("installSeedData complete")
 	}
 
+    void installSeedData(String name) {
+        def requestedSets = [:]
+
+        def seedFiles = getSeedFiles()
+        def (seedSets, seedSetByPlugin, seedSetsByName)    = buildSeedSets(seedFiles)
+
+        if(name.contains('.')) {
+            def plugin = name.substring(0, name.indexOf('.'))
+            String seedName = name.substring(plugin.length() + 1)
+            plugin = plugin.replaceAll(/\B[A-Z]/) { '-' + it }.toLowerCase()
+
+            String seedAddress = plugin + "." + seedName
+            requestedSets."$seedAddress" = seedSets."$seedAddress"
+        } else { // in case of ambiguity find all seeds with matching name
+            def sets = seedSetsByName[name]
+            requestedSets = sets.collect { "${it.plugin}.${it.name}" }
+        }
+
+        log.info("installSeedData: " + name)
+
+        def seedSetsToRun = requestedSets + [:]
+
+        requestedSets.each { setName, set ->
+            seedSetProcess(set, seedSetsToRun, seedSetByPlugin, seedSetsByName)
+        }
+
+        log.info("installSeedData complete")
+    }
+
+
 	def installExternalSeed(seedContent) {
 		try {
 			def tmpSet = buildSeedSet('external', seedContent)
