@@ -6,6 +6,7 @@ SeedMe does not require any configuration, but there are several configuration o
 
 ```groovy
 grails.plugin.seed.autoSeed=false
+grails.plugin.seed.skipPlugins=false
 grails.plugin.seed.excludedPlugins=[] // plugins to exclude
 grails.plugin.seed.excludedSeedFiles=[] // Seed files to exclude
 grails.plugin.seed.root='src/seed' //

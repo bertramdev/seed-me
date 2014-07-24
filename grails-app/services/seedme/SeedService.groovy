@@ -29,7 +29,7 @@ class SeedService {
 		def (seedSets, seedSetByPlugin, seedSetsByName)    = buildSeedSets(seedFiles)
 		// make a copy so we can remove items from one list as they are processed, another to
 		// iterate through
-		def seedSetsToRun = seedSets + [:]
+		def seedSetsToRun = seedSets.clone()
 
 		seedSets.each { name, set ->
 			seedSetProcess(set, seedSetsToRun, seedSetByPlugin, seedSetsByName)
@@ -400,6 +400,9 @@ class SeedService {
 	}
 
 	private boolean isPluginExcluded(name) {
+		if(getConfig().skipPlugins) {
+			return true
+		}
 		def excluded = getConfig().excludedPlugins ?: []
 		return excluded.find { it == name}
 	}
