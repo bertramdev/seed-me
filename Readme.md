@@ -1,4 +1,12 @@
+SeedMe
+------
+
 SeedMe is a simple plugin that was created to provide an easy way to add config and test data to the system.
+
+Release Notes
+-------------
+* __0.6.1__: Added support for [enums](#EnumSupport)
+
 
 Configuring for Development
 ---------------------------
@@ -56,7 +64,7 @@ seed = {
 }
 ```
 
-**Assigning Values by Closure
+**Assigning Values by Closure**
 
 In some cases, it may be necessary to generate the values within context of the seed run. (For example, using enumerators or string values that are combined from queries to other domains).
 
@@ -69,6 +77,43 @@ seed = {
 			return domain.ACTIVE
 		}
 	)
+}
+```
+
+<a name="EnumSupport"></a>
+**Enum Support**
+
+Enum type values in domain classes are supported in two variations.  Through direct reference inside your DSL or by allowing the seed service to derive the enum from the domain class itself.
+
+Given enum and domain class defined as:
+```groovy
+package com.mypackage
+
+enum SomeEnum {
+    value1,
+    value2,
+    value3
+}
+
+class SomeDomain {
+    String name
+    SomeEnum someEnum
+    Date dateCreated
+}
+```
+
+You can use this in form A:
+```groovy
+import com.mypackage.SomeEnum
+seed = {
+    someDomain(meta:[key:'name'], name:'bob', someEnum:SomeEnum.value1)
+}
+```
+
+Form B:
+```groovy
+seed = {
+    someDomain(meta:[key:'name'], name:'bob', someEnum:'value2')
 }
 ```
 
