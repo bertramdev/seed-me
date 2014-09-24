@@ -2,6 +2,9 @@ package seedme
 
 import grails.util.Environment
 import groovy.text.GStringTemplateEngine
+import org.codehaus.groovy.grails.commons.GrailsDomainClass
+import org.codehaus.groovy.grails.commons.GrailsDomainClassProperty
+
 import java.security.MessageDigest
 import javax.xml.bind.DatatypeConverter
 import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
@@ -142,7 +145,7 @@ class SeedService {
 		try {
 			def tmpBinding = new Binding()
 			tmpBinding.setVariable("grailsApplication", grailsApplication)
-			def tmpConfig = new GroovyShell(tmpBinding).evaluate(seedContent,plugin ? "${plugin}:${name}" : name)
+			def tmpConfig = new GroovyShell(this.class.classLoader, tmpBinding).evaluate(seedContent,plugin ? "${plugin}:${name}" : name)
 			rtn.checksum = DatatypeConverter.printBase64Binary(MessageDigest.getInstance('MD5').digest(seedContent.bytes))
 			def tmpBuilder = new SeedBuilder()
 			tmpBuilder.seed(tmpBinding.getVariable('seed'))
@@ -157,14 +160,13 @@ class SeedService {
 	}
 
 	def processSeedItem(seedItem) {
-		def tmpDomain = grailsApplication.getArtefactByLogicalPropertyName('Domain', seedItem.domainClass)
+		GrailsDomainClass tmpDomain = grailsApplication.getArtefactByLogicalPropertyName('Domain', seedItem.domainClass)
 		def tmpMeta = seedItem.meta
 		if(tmpDomain && tmpMeta.key) {
-			def tmpProperties = tmpDomain.getPersistentProperties()
 			def tmpData = seedItem.data
 			def saveData = [:]
 			tmpData.each { key, value ->
-				def tmpProp = tmpProperties.find{it.getFieldName().toLowerCase() == key.toLowerCase()}
+				GrailsDomainClassProperty tmpProp = tmpDomain.getPersistentProperty(key)
 				if(tmpProp) {
 					if(tmpProp.isAssociation()) {
 						def subDomain = tmpProp.getReferencedDomainClass()
@@ -189,7 +191,12 @@ class SeedService {
 						} else {
 							log.warn "Association is not handled thus this object may not be seeded"
 						}
-					} else {
+					}
+					// if domain class property type is an enum, transform value into the appropriate enum type
+					else if (tmpProp.isEnum() && value instanceof String) {
+						setSeedValue(saveData, key, Enum.valueOf(tmpProp.referencedPropertyType, value))
+					}
+					else {
 						setSeedValue(saveData, key, value)
 					}
 				} else {
