@@ -45,6 +45,7 @@ Usage
 The seed file must start with a seed closure and within the closure you will add an entry for each seed item. Each entry within the seed closure must begin with the `Artefact` name of the `Domain`.
 
 **Specifying Options**
+
 The seed plugin supports several optional attributes to make it easier to generate data. The first of which is the `meta` property
 
 ```groovy
@@ -54,6 +55,7 @@ domainClass(meta:[key:'uniqueId', update: false])
 The `meta` property allows the specification of the unique finder key. When a domain is seeded, the seed service will first attempt to find an instance of the domain by this property based on the seed value. This `key` property can be either a single property value or a map of properties to find by. Also, if the seed does exist, you can optionally set `update:false`. This will prevent the record from being restored/updated if it already exists.
 
 **Assigning properties by association**
+
 If a property is an instance of a domain class, the property may be assignable by passing a map of the fields with which to look up this domain. i.e. Given 2 domains `Book` and `Author` with `Book` belonging to `Author`:
 
 ```groovy
@@ -118,10 +120,12 @@ seed = {
 ```
 
 **Running Seeds**
+
 By default the seeds do not execute at startup. This can be enabled by setting `grails.plugin.seed.autoSeed = true` or using system property with startup `-DautoSeed=true`. This allows you to selectivily control how/when your seeds are executed for particular environments. A script is also provided that can execute seeds by running `grails run-seed`.
 
 
 **Assigning properties by domain**
+
 In some cases (mainly legacy db schemas) an association may not directly exist between 2 domains however they are associated by a property. If a specific property needs to be the result of finding another domain with that property you may use a map with the following syntax:
 
 ```groovy
@@ -135,6 +139,7 @@ This will look for the specified domain of `Author` and find the author with the
 
 
 **Assigning domains to a hasMany property**
+
 For one-to-many or many-to-many relationships, specify a list of maps. The map shall contain the fields by which to look up the sub domains.  For instance, for the following `Book` domain class with many `Authors`
 
 ```groovy
@@ -159,6 +164,7 @@ seed = {
 This will look for the two `Author` domains by the `name` field.
 
 **Controlling Seed Order**
+
 SeedMe supports the ability to control seed load order across all your plugins with a dependsOn directive. An example may look like this:
 
 ```groovy
