@@ -6,26 +6,32 @@ import static org.junit.Assert.*
 import grails.test.mixin.TestFor
 import grails.test.mixin.*
 
-class SomeDomainObject {
+enum SomeEnumType {
+	value1,
+	value2,
+	value3
+}
 
-    String id;
-    String version;
+class SomeDomainObject {
+    String id
+    String version
 
     String code
     String something
     Date dateCreated
     Date lastUpdated
+	SomeEnumType someEnum
 }
 
 class SomeOtherDomainObject {
-    String id;
-    String version;
+    String id
+    String version
 
     String extId
     String somethingElse
     Date dateCreated
     Date lastUpdated
-
+	SomeEnumType someEnum
 }
 
 /**
@@ -52,6 +58,10 @@ class SeedServiceTests {
         assertEquals(2, someDomains.size())
         assertEquals(2, someOtherDomains.size())
 
+	    assertEquals(SomeEnumType.value1, SomeDomainObject.findByCode('a').someEnum)
+	    assertEquals(SomeEnumType.value3, SomeDomainObject.findByCode('b').someEnum)
+	    assertEquals(SomeEnumType.value2, SomeOtherDomainObject.findByExtId('1').someEnum)
+	    assertEquals(SomeEnumType.value1, SomeOtherDomainObject.findByExtId('2').someEnum)
     }
 
     def testInstallNamedSeed() {
