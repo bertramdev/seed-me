@@ -237,8 +237,8 @@ class SeedService {
 					return tmpObj
 				}.findAll{it!=null}
 			}
-			//} else if (value instanceof Map && value.meta) {
-		} else if (value instanceof Map) {
+		} else if (value instanceof Map && value[getMetaKey()]) {
+		//} else if (value instanceof Map) {
 			value = value.clone() //Dont want to simply remove keys in case this value is reused elsewhere
 			def tmpMatchDomain = value.remove('domainClass')
 			def tmpObjectMeta = value.remove(getMetaKey())
