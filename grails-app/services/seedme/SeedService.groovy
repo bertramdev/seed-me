@@ -407,6 +407,10 @@ class SeedService {
 	}
 
 	private boolean isPluginExcluded(name) {
+		if(name == 'application'){
+			return false
+		}
+		
 		if(getConfig().skipPlugins) {
 			return true
 		}
