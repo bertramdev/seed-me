@@ -203,7 +203,9 @@ class SeedService {
 					setSeedValue(saveData, key, value)
 				}
 			}
-			createSeed(tmpDomain, tmpMeta.key, saveData)
+			def opts = [:]
+			opts.update = tmpMeta.update ?: null
+			createSeed(tmpDomain, tmpMeta.key, saveData, opts)
 		}
 	}
 
