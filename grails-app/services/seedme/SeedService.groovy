@@ -204,7 +204,9 @@ class SeedService {
 				}
 			}
 			def opts = [:]
-			opts.update = tmpMeta.update ?: null
+			tmpMeta.entrySet().each() { it ->
+				if(it.key != "key") opts << it
+			}
 			createSeed(tmpDomain, tmpMeta.key, saveData, opts)
 		}
 	}
