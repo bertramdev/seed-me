@@ -5,6 +5,7 @@ SeedMe is a simple plugin that was created to provide an easy way to add config 
 
 Release Notes
 -------------
+* __0.6.5__: Fixed meta support to respect the update attribute
 * __0.6.2__: Fixing the ability to use map types as domain properties which are not associations
 * __0.6.1__: Added support for [enums](#EnumSupport)
 

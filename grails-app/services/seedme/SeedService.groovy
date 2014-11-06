@@ -203,7 +203,11 @@ class SeedService {
 					setSeedValue(saveData, key, value)
 				}
 			}
-			createSeed(tmpDomain, tmpMeta.key, saveData)
+			def opts = [:]
+			tmpMeta.entrySet().each() { it ->
+				if(it.key != "key") opts << it
+			}
+			createSeed(tmpDomain, tmpMeta.key, saveData, opts)
 		}
 	}
 
