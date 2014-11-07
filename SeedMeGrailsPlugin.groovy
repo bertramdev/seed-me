@@ -18,9 +18,11 @@ class SeedMeGrailsPlugin {
 	def developers      = [
 		[name: 'Brian Wheeler', email: 'bwheeler@bcap.com'],
 		[name: 'David Estes', email: 'destes@bcap.com'],
-		[name: 'Jordon Saardchit',email: 'jsaardchit@bcap.com'],
-		[name: 'Jeremy Crosbie',email: 'jcrosbie@bcap.com'],
-		[name: 'Jeremy Leng',email: 'jleng@bcap.com']]
+		[name: 'Jordon Saardchit', email: 'jsaardchit@bcap.com'],
+		[name: 'Jeremy Crosbie', email: 'jcrosbie@bcap.com'],
+		[name: 'Jeremy Leng', email: 'jleng@bcap.com'],
+		[name:' William Chu', email: 'wchu@bcap.com']]
+
 	def scm             = [ url: "http://github.com/bertramdev/seed-me" ]
 	def issueManagement = [ system: "GITHUB", url: "http://github.com/bertramdev/seed-me/issues" ]
 
