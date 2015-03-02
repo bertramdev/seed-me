@@ -34,6 +34,15 @@ class SomeOtherDomainObject {
 	SomeEnumType someEnum
 }
 
+class MapOfStringsDomainObject {
+    String id
+    String version
+    String name
+    Map attributes
+    static hasMany = [attributes:String]
+}
+
+
 /**
  * See the API for {@link grails.test.mixin.support.GrailsUnitTestMixin} for usage instructions
  */
@@ -45,19 +54,25 @@ class SeedServiceTests {
         mockDomain(SeedMeChecksum)
         mockDomain(SomeDomainObject)
         mockDomain(SomeOtherDomainObject)
+        mockDomain(MapOfStringsDomainObject)
 
         def someDomains = SomeDomainObject.findAll();
         def someOtherDomains = SomeOtherDomainObject.findAll()
+        def someMapOfStringsDomains = MapOfStringsDomainObject.findAll()
         assertEquals(0, someDomains.size())
         assertEquals(0, someOtherDomains.size())
+        assertEquals(0, someMapOfStringsDomains.size())
 
         service.installSeedData()
 
         someDomains = SomeDomainObject.findAll();
         someOtherDomains = SomeOtherDomainObject.findAll()
+        someMapOfStringsDomains = MapOfStringsDomainObject.findAll()
         assertEquals(2, someDomains.size())
         assertEquals(2, someOtherDomains.size())
-
+        println someMapOfStringsDomains
+        assertEquals(1, someMapOfStringsDomains.size())
+        assertEquals('poopy', someMapOfStringsDomains[0].attributes['poop'])
 	    assertEquals(SomeEnumType.value1, SomeDomainObject.findByCode('a').someEnum)
 	    assertEquals(SomeEnumType.value3, SomeDomainObject.findByCode('b').someEnum)
 	    assertEquals(SomeEnumType.value2, SomeOtherDomainObject.findByExtId('1').someEnum)

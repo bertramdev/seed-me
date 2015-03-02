@@ -381,13 +381,22 @@ class SeedService {
 
 	boolean applyChanges(obj, config, excludes = []) {
 		def changed = false
+		//println 'POOOP'
 		config.keySet().each {
 			if(!excludes.contains(it)) {
 				def tmpVal = config[it]
 				def tmpCompare = obj[it]
-				if(tmpVal != tmpCompare) {
-					changed = true
-					obj[it] = tmpVal
+				if (tmpVal instanceof Map && tmpCompare instanceof Map) {
+					obj[it] = obj[it] ?: new HashMap()
+					tmpVal.each {k, v->
+						if (obj[it][k] != v) changed = true
+						obj[it][k] = v
+					}
+				} else {
+					if(tmpVal != tmpCompare) {
+						changed = true
+						obj[it] = tmpVal
+					}
 				}
 			}
 		}
