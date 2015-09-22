@@ -179,6 +179,8 @@ class SeedService {
 						} else if(tmpProp.isHasOne() || tmpProp.isOneToOne()) {
 							if(value instanceof Map) {
 								setSeedValue(saveData, key, value)
+							} else if(value instanceof List) {
+								setSeedValue(saveData, key, value, subDomain)
 							}
 						} else if(tmpProp.isManyToMany()) {
 							if(value instanceof Map) {
