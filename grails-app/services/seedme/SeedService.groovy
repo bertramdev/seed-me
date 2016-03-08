@@ -269,6 +269,8 @@ class SeedService {
 			if(seedObject) {
 				data[key] = seedObject
 			} 
+		} else if (value instanceof Map && value._literal == true) {
+			data[key] = value.value
 		} else if(value instanceof CharSequence && value.toString().indexOf('$') >= 0) {
 			data[key] = new GStringTemplateEngine().createTemplate(value.toString()).make(getDomainBindingsForGString()).toString()
 		} else if(value instanceof Closure) {
