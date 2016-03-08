@@ -6,8 +6,11 @@ grails.project.dependency.resolution = {
 	log 'warn'
 
 	repositories {
-		grailsCentral()
+		inherits true // Whether to inherit repository definitions from plugins
+		grailsPlugins()
+		grailsHome()
 		mavenLocal()
+		grailsCentral()
 		mavenCentral()
 	}
 
@@ -15,7 +18,7 @@ grails.project.dependency.resolution = {
 	}
 
 	plugins {
-		build ':release:2.2.1', ':rest-client-builder:1.0.3', {
+		build ':release:3.1.2', ':rest-client-builder:1.0.3', {
 			export = false
 		}
 /*
@@ -23,7 +26,7 @@ grails.project.dependency.resolution = {
 			export = false
 		}
 */
-		compile(":hibernate:$grailsVersion") {    // hibernate only for integration tests
+		compile(":hibernate:3.6.10.19") {    // hibernate only for integration tests
 			export = false                     // don't make this available to the client app
 		}
 	}
