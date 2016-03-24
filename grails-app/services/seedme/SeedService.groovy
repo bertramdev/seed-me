@@ -1,6 +1,8 @@
 package seedme
 
 import grails.util.Environment
+import groovy.io.FileType
+import groovy.io.FileVisitResult
 import groovy.text.GStringTemplateEngine
 import org.codehaus.groovy.grails.commons.GrailsDomainClass
 import org.codehaus.groovy.grails.commons.GrailsDomainClassProperty
@@ -467,20 +469,15 @@ class SeedService {
 		seedPaths.each { seedPath ->
 			def seedFolder = new File(seedPath.value)
 			def pluginName = seedPath.key
-			if(seedFolder.exists()) {
-				seedFolder?.eachFile { tmpFile ->
-					if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy') && !isSeedFileExcluded(tmpFile.name))
-						seedFiles << [file: tmpFile, plugin: pluginName]
-				}
-				seedFolder?.eachDir { tmpFolder ->
-					if(tmpFolder.name == env) {
-						tmpFolder.eachFile { tmpFile ->
-							if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy'))
-								seedFiles << [file: tmpFile, plugin: pluginName]
-						}
-					}
-				}
-			}
+			if(!seedFolder.exists()) return;
+			seedFolder.traverse([
+				type: FileType.FILES,
+				nameFilter: ~/.*\.groovy/,
+				preDir : { if (it.name != subDir ) return FileVisitResult.SKIP_SUBTREE }
+			], { file ->
+				if(!isSeedFileExcluded(file.name))
+					seedFiles << [file: file, plugin: pluginName]
+			})
 		}
 		return seedFiles
 	}
