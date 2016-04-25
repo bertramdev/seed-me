@@ -10,17 +10,20 @@ import javax.xml.bind.DatatypeConverter
 
 import org.grails.plugins.domain.DomainClassGrailsPlugin
 import groovy.util.logging.Commons
+import grails.util.BuildSettings
 import org.apache.commons.io.FilenameUtils as FNU
+import grails.plugins.GrailsPluginManager
+import grails.core.GrailsApplication
 
 @Commons
 class SeedService {
 
 	static transactional = false
 
-	def grailsApplication
+	GrailsApplication grailsApplication
+	GrailsPluginManager pluginManager
 	def sessionFactory
 	def messageSource
-	def propertyInstanceMap = DomainClassGrailsPlugin.PROPERTY_INSTANCE_MAP
 
 	void installSeedData() {
 		// GRAILS 2.3.1 ISSUE?
@@ -316,7 +319,7 @@ class SeedService {
 		if(grailsApplication.warDeployed)
 			grailsApplication.mainContext.getResource('seed').file.path
 		else
-			getConfig()?.root ?: 'src/seed'
+			BuildSettings.BASE_DIR + "/" + (getConfig()?.root ?: 'src/seed')
 	}
 
 	String getSeedPath(name) {
@@ -437,12 +440,18 @@ class SeedService {
 			}
 		} else {
 			def seedRoot = getConfig()?.root ?: 'src/seed'
-			for(plugin in GrailsPluginUtils.pluginInfos) {
-				if(!isPluginExcluded(plugin.name)) {
-					def seedPath = [plugin.pluginDir.getPath(), seedRoot].join(File.separator)
-					seedPaths[plugin.name] = seedPath
+			pluginManager.getAllPlugins()?.each { plugin ->
+				try {
+					if(!isPluginExcluded(plugin.name)) {
+						def seedPath = [plugin.pluginDir.getPath(), seedRoot].join(File.separator)
+						seedPaths[plugin.name] = seedPath
+					}	
+				} catch(exc) {
+					//binary plugins wont work in grails 3 with current design
 				}
-			}
+                
+            }
+			
 			seedPaths.application = seedRoot
 		}
 		return seedPaths
@@ -481,7 +490,6 @@ class SeedService {
 		session = session ?: sessionFactory.currentSession
 		session.clear()
 		session.flush()
-		propertyInstanceMap.get().clear()
 	}
 
 	/**

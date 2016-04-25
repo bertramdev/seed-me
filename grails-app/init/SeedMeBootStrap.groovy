@@ -7,6 +7,7 @@ class SeedMeBootStrap {
 	def seedService
 
 	def init = { servletContext ->
+		println "Bootstrapping Seed-me plugin"
 		def autoSeed = grailsApplication.config.grails.plugin.seed.autoSeed
 		if(!(autoSeed instanceof Boolean)) {
 			autoSeed = false
