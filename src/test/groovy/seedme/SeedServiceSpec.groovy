@@ -1,5 +1,9 @@
 package seedme
 
+import grails.test.mixin.TestMixin
+import grails.test.mixin.support.GrailsUnitTestMixin
+import spock.lang.*
+
 import grails.test.mixin.domain.DomainClassUnitTestMixin
 
 import static org.junit.Assert.*
@@ -42,14 +46,18 @@ class MapOfStringsDomainObject {
     static hasMany = [attributes:String]
 }
 
-
 /**
  * See the API for {@link grails.test.mixin.support.GrailsUnitTestMixin} for usage instructions
  */
-@TestFor(SeedService)
 @TestMixin(DomainClassUnitTestMixin)
-class SeedServiceTests {
+@TestFor(SeedService)
+class SeedServiceSpec extends Specification {
 
+    def setup() {
+    }
+
+    def cleanup() {
+    }
     def testInstallSeedData() {
         mockDomain(SeedMeChecksum)
         mockDomain(SomeDomainObject)
@@ -97,5 +105,4 @@ class SeedServiceTests {
         assertEquals(0, someOtherDomains.size())
 
     }
-
 }

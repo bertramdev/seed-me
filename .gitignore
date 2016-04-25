@@ -7,3 +7,5 @@ plugin.xml
 /web-app
 *.idea/**
 *.iml
+build/
+.gradle/

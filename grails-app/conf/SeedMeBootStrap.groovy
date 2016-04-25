@@ -1,7 +1,9 @@
 
+import grails.core.GrailsApplication
+
 class SeedMeBootStrap {
 
-	def grailsApplication
+	GrailsApplication grailsApplication
 	def seedService
 
 	def init = { servletContext ->

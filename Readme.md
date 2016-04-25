@@ -24,6 +24,19 @@ grails.plugin.seed.metaKey='meta' // seed map key for meta information
 grails.plugin.seed.environment='[Grails environment name]'
 ```
 
+
+Grails 3
+--------
+
+For grails3 a mod has to be made to the users build.gradle file such that the seed files are copied into the war file appropriately.
+
+```groovy
+project.tasks.processResources.dependsOn(project.task.create(Copy,"Copy Seed"){
+	from "src/seed"
+	into "seed"
+})
+```
+
 Details
 ---------------------------
 SeedMe looks for seed files in a seed folder inside the project `src` folder and in all included plugins.  Any files at the root of seed folder will be processed.

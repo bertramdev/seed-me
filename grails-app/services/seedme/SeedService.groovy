@@ -2,18 +2,17 @@ package seedme
 
 import grails.util.Environment
 import groovy.text.GStringTemplateEngine
-import org.codehaus.groovy.grails.commons.GrailsDomainClass
-import org.codehaus.groovy.grails.commons.GrailsDomainClassProperty
+import grails.core.GrailsDomainClass
+import grails.core.GrailsDomainClassProperty
 
 import java.security.MessageDigest
 import javax.xml.bind.DatatypeConverter
-import org.codehaus.groovy.grails.plugins.GrailsPluginUtils
-import org.codehaus.groovy.grails.web.metaclass.BindDynamicMethod
-import org.codehaus.groovy.grails.plugins.DomainClassGrailsPlugin
-import groovy.util.logging.Log4j
+
+import org.grails.plugins.domain.DomainClassGrailsPlugin
+import groovy.util.logging.Commons
 import org.apache.commons.io.FilenameUtils as FNU
 
-@Log4j
+@Commons
 class SeedService {
 
 	static transactional = false
@@ -396,13 +395,6 @@ class SeedService {
 			}
 		}
 		return changed
-	}
-
-	def bindObject(tgt, src, config = null) { //just like bindData
-		def tmpBind = new BindDynamicMethod()
-		def tmpArgs = [tgt, src]
-		if(config) tmpArgs << config
-		tmpBind.invoke(tgt, 'bind', (Object[])tmpArgs)
 	}
 
 	String getSeedSetName(str, plugin='') {
