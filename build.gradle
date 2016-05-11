@@ -16,7 +16,7 @@ plugins {
     id "com.jfrog.bintray" version "1.6"
 }
 
-version "3.0.2"
+version "3.0.3"
 group "com.bertramlabs.plugins"
 
 apply plugin:"eclipse"
@@ -43,6 +43,7 @@ dependencyManagement {
 }
 
 dependencies {
+    compileOnly gradleApi()
     provided 'org.springframework.boot:spring-boot-starter-logging'
     provided "org.springframework.boot:spring-boot-starter-actuator"
     provided "org.springframework.boot:spring-boot-autoconfigure"

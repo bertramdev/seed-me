@@ -14,6 +14,7 @@ import grails.util.BuildSettings
 import org.apache.commons.io.FilenameUtils as FNU
 import grails.plugins.GrailsPluginManager
 import grails.core.GrailsApplication
+import static grails.async.Promises.*
 
 @Commons
 class SeedService {
@@ -128,7 +129,7 @@ class SeedService {
 			def pluginName = seedFile.plugin ?: 'application'
 			def tmpContent = tmpFile.getText()
 
-			def tmpSeedName = getSeedSetName(tmpFile.name)
+			def tmpSeedName = getSeedSetName(seedFile.name)
 			byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
 			byName[tmpSeedName] = byName[tmpSeedName] ?: []
 			def tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)
@@ -457,11 +458,35 @@ class SeedService {
 		return seedPaths
 	}
 
+	def getClassPathSeedFiles() {
+		ClassLoader classLoader = Thread.currentThread().contextClassLoader
+		def resources = classLoader.getResources('seeds.list')
+		def seedList = []
+        resources.each { URL res ->
+            seedList += res?.text?.tokenize("\n") ?: []
+        }
+        def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
+        def env = tmpEnvironmentFolder ?: Environment.current.name
+
+        seedList = seedList.findAll{ item -> item.startsWith("${env}/") || item.indexOf('/') == -1 }
+
+        def seedFiles = []
+        seedList.each { seedName ->
+        	classLoader.getResources("seed/${seedName}")?.eachWithIndex {res, index ->
+        		seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}"]
+        	}
+        }
+        return seedFiles
+	}
+
 	def getSeedFiles() {
+		def seedFiles = getClassPathSeedFiles()
+		if(seedFiles) {
+			return seedFiles
+		}
 		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
 		def seedPaths = getSeedPathsByPlugin()
 		def env = tmpEnvironmentFolder ?: Environment.current.name
-		def seedFiles = []
 		if(!seedPaths) {
 			//log.error "Seed folder '${seedFolder.absolutePath}' not found"
 		}
@@ -471,13 +496,13 @@ class SeedService {
 			if(seedFolder.exists()) {
 				seedFolder?.eachFile { tmpFile ->
 					if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy') && !isSeedFileExcluded(tmpFile.name))
-						seedFiles << [file: tmpFile, plugin: pluginName]
+						seedFiles << [file: tmpFile, name: tmpFile.name, plugin: pluginName]
 				}
 				seedFolder?.eachDir { tmpFolder ->
 					if(tmpFolder.name == env) {
 						tmpFolder.eachFile { tmpFile ->
 							if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy'))
-								seedFiles << [file: tmpFile, plugin: pluginName]
+								seedFiles << [file: tmpFile, name: tmpFile.name, plugin: pluginName]
 						}
 					}
 				}
@@ -528,19 +553,22 @@ class SeedService {
 		if(seedSetsLeft[setKey] && 
 			 (seedCheck?.checksum != set.checksum)) {
 			log.info "Processing $setKey"
-			SeedMeChecksum.withNewSession { session -> 
-				try {
-					set.seedList.each this.&processSeedItem
-					updateChecksum(seedCheck, set.checksum)
-					seedSetsLeft[setKey] = null
-					seedSetsLeft.remove(setKey)
-					seedOrder << set.name
-					gormFlush(session)
-				} catch(setError) {
-					log.error("error processing seed set ${set.name}",setError)
+			def seedTask = task {
+				SeedMeChecksum.withNewSession { session -> 
+					try {
+						set.seedList.each this.&processSeedItem
+						updateChecksum(seedCheck, set.checksum)
+						seedSetsLeft[setKey] = null
+						seedSetsLeft.remove(setKey)
+						seedOrder << set.name
+						gormFlush(session)
+					} catch(setError) {
+						log.error("error processing seed set ${set.name}",setError)
+					}
 				}
 			}
 			
+			waitAll(seedTask)
 		}
 	}
 
