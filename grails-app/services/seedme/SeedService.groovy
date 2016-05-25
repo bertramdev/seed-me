@@ -26,9 +26,11 @@ class SeedService {
 	def sessionFactory
 	def messageSource
 
+	private checkSumLoaded =  new ThreadLocal()
+	private checkSums = new ThreadLocal()
+
 	void installSeedData() {
-		// GRAILS 2.3.1 ISSUE?
-		// Caused by MissingPropertyException: No such property: log for class: seedme.SeedService
+		
 		log.info("seedService.installSeedData")
 		def seedFiles = getSeedFiles()
 		log.info("seedService - processing ${seedFiles?.size()} files")
@@ -124,6 +126,7 @@ class SeedService {
 	private buildSeedSets(seedFiles) {
 		def seedSets = [:], byPlugin = [:], byName = [:]
 		seedFiles.each { seedFile ->
+
 			//change to call below method
 			def tmpFile    = seedFile.file
 			def pluginName = seedFile.plugin ?: 'application'
@@ -132,12 +135,17 @@ class SeedService {
 			def tmpSeedName = getSeedSetName(seedFile.name)
 			byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
 			byName[tmpSeedName] = byName[tmpSeedName] ?: []
-			def tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)
 			def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
+			def checksum = DatatypeConverter.printBase64Binary(MessageDigest.getInstance('MD5').digest(tmpContent.bytes))
+			def tmpSeedSet
+			if(checkChecksum(tmpSetKey).checksum != checksum) {
+				tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)	
+			} else {
+				tmpSeedSet = [seedList: [], dependsOn: [], name: tmpSeedName, plugin: pluginName, checksum: checksum]
+			}
 			seedSets[tmpSetKey] = tmpSeedSet
 			byPlugin[pluginName][tmpSetKey] = tmpSeedSet
-			byName[tmpSeedName] << tmpSeedSet
-
+			byName[tmpSeedName] << tmpSeedSet	
 		}
 
 		return [seedSets, byPlugin, byName]
@@ -574,12 +582,21 @@ class SeedService {
 
 	private checkChecksum(seedName) {
 		def rtn = [checksum:null]
-		// don't require that the domain be available, e.g. if the user of seed doesn't have
-		// create privileges don't blow up
 		try {
-			rtn = SeedMeChecksum.findOrCreateWhere(seedName: seedName)
+			Boolean loaded = checkSumLoaded.get()
+			if(!loaded) {
+				checkSums.set(SeedMeChecksum.list(readOnly:true))
+				checkSumLoaded.set(true as Boolean)
+			}
+			def cache = checkSums.get()
+			rtn = cache?.find{seed -> seed.seedName == seedName}
+			if(!rtn) {
+				rtn = new SeedMeChecksum(seedName: seedName)
+			}
 		} catch(e) {
+			log.warn("Warning during Seed CheckSum Verification ${e.getMessage()}")
 		}
+		return rtn
 	}
 
 	private updateChecksum(seedCheck, newChecksum) {
