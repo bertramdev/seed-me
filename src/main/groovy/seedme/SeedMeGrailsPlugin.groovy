@@ -65,6 +65,21 @@ Brief summary/description of the plugin.
         }
     }
 
+    void onStartup(Map<String, Object> event) {
+        println "Bootstrapping Seed-me plugin"
+        def seedService = applicationContext['seedService']
+        def autoSeed = grailsApplication.config.grails.plugin.seed.autoSeed
+        if(!(autoSeed instanceof Boolean)) {
+            autoSeed = false
+        }
+        if(autoSeed == true || System.getProperty('autoSeed', 'false') == 'true') {
+            SeedMeChecksum.withNewSession { session ->
+                seedService.installSeedData()
+            }
+            
+        }
+    }
+
 
     void onConfigChange(Map<String, Object> event) {
         // TODO Implement code that is executed when the project configuration changes.
