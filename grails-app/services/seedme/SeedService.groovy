@@ -165,6 +165,7 @@ class SeedService {
 
 		} catch(e) {
 			log.error("error building seed set ${name}",e)
+			log.debug "name: ${name} seedContent: ${seedContent}"
 		}
 
 		return rtn
