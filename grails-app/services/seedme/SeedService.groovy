@@ -136,7 +136,7 @@ class SeedService {
 			byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
 			byName[tmpSeedName] = byName[tmpSeedName] ?: []
 			def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
-			def checksum = DatatypeConverter.printBase64Binary(MessageDigest.getInstance('MD5').digest(tmpContent.bytes))
+			def checksum = MessageDigest.getInstance('MD5').digest(tmpFile.bytes).encodeHex().toString()
 			def tmpSeedSet
 			if(checkChecksum(tmpSetKey).checksum != checksum) {
 				tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)	
@@ -157,7 +157,7 @@ class SeedService {
 			def tmpBinding = new Binding()
 			tmpBinding.setVariable("grailsApplication", grailsApplication)
 			def tmpConfig = new GroovyShell(this.class.classLoader, tmpBinding).evaluate(seedContent,plugin ? "${plugin}:${name}" : name)
-			rtn.checksum = DatatypeConverter.printBase64Binary(MessageDigest.getInstance('MD5').digest(seedContent.bytes))
+			rtn.checksum = MessageDigest.getInstance('MD5').digest(seedContent.bytes).encodeHex().toString()
 			def tmpBuilder = new SeedBuilder()
 			tmpBuilder.seed(tmpBinding.getVariable('seed'))
 			rtn.dependsOn = tmpBuilder.dependsOn
@@ -565,7 +565,7 @@ class SeedService {
 				SeedMeChecksum.withNewSession { session -> 
 					try {
 						set.seedList.each this.&processSeedItem
-						updateChecksum(seedCheck, set.checksum)
+						updateChecksum(seedCheck?.id, set.checksum)
 						seedSetsLeft[setKey] = null
 						seedSetsLeft.remove(setKey)
 						seedOrder << set.name
@@ -585,13 +585,14 @@ class SeedService {
 		try {
 			Boolean loaded = checkSumLoaded.get()
 			if(!loaded) {
-				checkSums.set(SeedMeChecksum.list(readOnly:true))
+				checkSums.set(SeedMeChecksum.list())
 				checkSumLoaded.set(true as Boolean)
 			}
 			def cache = checkSums.get()
 			rtn = cache?.find{seed -> seed.seedName == seedName}
 			if(!rtn) {
 				rtn = new SeedMeChecksum(seedName: seedName)
+				rtn.save(flush:true)
 			}
 		} catch(e) {
 			log.warn("Warning during Seed CheckSum Verification ${e.getMessage()}")
@@ -599,12 +600,15 @@ class SeedService {
 		return rtn
 	}
 
-	private updateChecksum(seedCheck, newChecksum) {
+	private updateChecksum(seedCheckId, newChecksum) {
 		// again, don't require that the SeedMeChecksum domain be around
 		try {
+
+			def seedCheck = SeedMeChecksum.get(seedCheckId)
 			seedCheck.checksum = newChecksum
-			seedCheck.save()
+			seedCheck.save(flush:true)
 		} catch(e) {
+			log.warn("Error updating seed checksum record... ${e}",e)
 		}
 	}
 
