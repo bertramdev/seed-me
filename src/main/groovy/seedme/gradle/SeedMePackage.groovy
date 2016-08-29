@@ -55,7 +55,11 @@ class SeedMePackage extends DefaultTask {
         }
         seedDir.eachFileRecurse(FileType.FILES) { file ->
             def relativePath = relativePathToResolver(file.canonicalPath, seedDir.canonicalPath)
-            manifestNames << relativePath
+            if(relativePath.indexOf('.') == 0) {
+                println "ignoring hidden file: ${relativePath} at ${file} and not adding to seeds.list"
+            } else {
+                manifestNames << relativePath
+            }
             File outputFile = new File(seedDestDir,relativePath)
             if(!outputFile.exists()) {
                 outputFile.parentFile.mkdirs()

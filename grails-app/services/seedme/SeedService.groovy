@@ -138,6 +138,7 @@ class SeedService {
 			def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
 			def checksum = MessageDigest.getInstance('MD5').digest(tmpFile.bytes).encodeHex().toString()
 			def tmpSeedSet
+			log.trace "seedFiles: ${seedFiles}"
 			if(checkChecksum(tmpSetKey).checksum != checksum) {
 				tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)	
 			} else {
