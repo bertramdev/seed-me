@@ -558,7 +558,7 @@ class SeedService {
 		}
 
 		// if this seed set is in the list, run it
-		def seedCheck = checkChecksum(setKey)
+	def seedCheck = checkChecksum(setKey)
 		if(seedSetsLeft[setKey] && 
 			 (seedCheck?.checksum != set.checksum)) {
 			log.info "Processing $setKey"
@@ -566,7 +566,7 @@ class SeedService {
 				SeedMeChecksum.withNewSession { session -> 
 					try {
 						set.seedList.each this.&processSeedItem
-						updateChecksum(seedCheck?.id, set.checksum)
+						updateChecksum(seedCheck?.id, set.checksum, setKey)
 						seedSetsLeft[setKey] = null
 						seedSetsLeft.remove(setKey)
 						seedOrder << set.name
@@ -593,7 +593,6 @@ class SeedService {
 			rtn = cache?.find{seed -> seed.seedName == seedName}
 			if(!rtn) {
 				rtn = new SeedMeChecksum(seedName: seedName)
-				rtn.save(flush:true)
 			}
 		} catch(e) {
 			log.warn("Warning during Seed CheckSum Verification ${e.getMessage()}")
@@ -601,11 +600,17 @@ class SeedService {
 		return rtn
 	}
 
-	private updateChecksum(seedCheckId, newChecksum) {
+	private updateChecksum(seedCheckId, newChecksum, setKey) {
 		// again, don't require that the SeedMeChecksum domain be around
 		try {
-
-			def seedCheck = SeedMeChecksum.get(seedCheckId)
+			def seedCheck
+			if(!seedCheckid) {
+				seedCheck = new SeedMeChecksum(seedName: setKey)
+			}
+			else {
+				seedCheck = SeedMeChecksum.get(seedCheckId)
+			}
+			
 			seedCheck.checksum = newChecksum
 			seedCheck.save(flush:true)
 		} catch(e) {
