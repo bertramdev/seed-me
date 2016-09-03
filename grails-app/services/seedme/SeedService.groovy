@@ -604,7 +604,7 @@ class SeedService {
 		// again, don't require that the SeedMeChecksum domain be around
 		try {
 			def seedCheck
-			if(!seedCheckid) {
+			if(!seedCheckId) {
 				seedCheck = new SeedMeChecksum(seedName: setKey)
 			}
 			else {
