@@ -485,6 +485,7 @@ class SeedService {
         		seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}"]
         	}
         }
+        seedFiles = seedFiles.sort{ a,b -> a.name <=> b.name}
         return seedFiles
 	}
 
@@ -517,6 +518,7 @@ class SeedService {
 				}
 			}
 		}
+		seedFiles = seedFiles.sort{ a,b -> a.name <=> b.name}
 		return seedFiles
 	}
 
