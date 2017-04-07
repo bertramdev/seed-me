@@ -370,7 +370,6 @@ class SeedService {
 						}
 						
 					}
-					tmpObj.discard()
 					
 				}
 			} else {
@@ -386,7 +385,6 @@ class SeedService {
 					}
 					log.error("Seed Error Inserting ${tmpObj.toString()}\n${errors.join("\n")}")
 				}
-				tmpObj.discard()
 			}
 			return tmpObj
 		} else {
