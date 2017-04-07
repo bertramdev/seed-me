@@ -312,7 +312,7 @@ class SeedService {
 			tmpOpts.remove('useField')
 			tmpOpts.remove('useClosure')
 			tmpOpts.remove('domainClass')
-			rtn = tmpInstance.findWhere(opts,[readOnly:true])
+			rtn = tmpInstance.findWhere(opts)
 			if(rtn) {
 				if(tmpMeta?.useId == true)
 					rtn = rtn.id
