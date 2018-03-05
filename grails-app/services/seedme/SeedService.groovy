@@ -6,6 +6,7 @@ import grails.core.GrailsDomainClass
 import grails.core.GrailsDomainClassProperty
 
 import java.security.MessageDigest
+import java.security.DigestInputStream
 import javax.xml.bind.DatatypeConverter
 
 import org.grails.plugins.domain.DomainClassGrailsPlugin
@@ -15,6 +16,7 @@ import org.apache.commons.io.FilenameUtils as FNU
 import grails.plugins.GrailsPluginManager
 import grails.core.GrailsApplication
 import static grails.async.Promises.*
+import groovy.transform.CompileStatic
 
 @Commons
 class SeedService {
@@ -33,7 +35,9 @@ class SeedService {
 		
 		log.info("seedService.installSeedData")
 		def seedFiles = getSeedFiles()
+
 		log.info("seedService - processing ${seedFiles?.size()} files")
+		def startTime = new Date().time
 		def (seedSets, seedSetByPlugin, seedSetsByName)    = buildSeedSets(seedFiles)
 		// make a copy so we can remove items from one list as they are processed, another to
 		// iterate through
@@ -43,7 +47,7 @@ class SeedService {
 			seedSetProcess(set, seedSetsToRun, seedSetByPlugin, seedSetsByName)
 		}
 
-		println("installSeedData complete")
+		log.info("installSeedData completed in {}ms",new Date().time - startTime)
 	}
 
     void installSeedData(String name) {
@@ -136,7 +140,8 @@ class SeedService {
 			byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
 			byName[tmpSeedName] = byName[tmpSeedName] ?: []
 			def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
-			def checksum = MessageDigest.getInstance('MD5').digest(tmpFile.bytes).encodeHex().toString()
+			def checksum = getMD5FromStream(tmpFile.inputStream)
+			
 			def tmpSeedSet
 			log.trace "seedFiles: ${seedFiles}"
 			if(checkChecksum(tmpSetKey).checksum != checksum) {
@@ -150,6 +155,27 @@ class SeedService {
 		}
 
 		return [seedSets, byPlugin, byName]
+	}
+
+	@CompileStatic
+	private String getMD5FromStream(InputStream istream) {
+		DigestInputStream digestStream
+		MessageDigest digest
+		try {
+			byte[] buffer = new byte[1024]
+			int nRead
+			digest = MessageDigest.getInstance("MD5")
+			digestStream = new DigestInputStream(istream,digest)
+			while((nRead = digestStream.read(buffer, 0, buffer.length)) != -1) {
+				// noop (just to complete the stream)
+			}
+		} catch(IOException ioe) {
+			// Its ok if the stream is already closed so ignore error
+		} finally {
+			try { digestStream?.close() } catch(Exception ex) { /*ignore if already closed this reduces open file handles*/ }
+		}
+		return digest.digest().encodeHex().toString()
+		
 	}
 
 	private buildSeedSet(name, seedContent, plugin = null) {
