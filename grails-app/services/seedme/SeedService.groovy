@@ -16,9 +16,10 @@ import org.apache.commons.io.FilenameUtils as FNU
 import grails.plugins.GrailsPluginManager
 import grails.core.GrailsApplication
 import static grails.async.Promises.*
+import groovy.util.logging.Slf4j
 import groovy.transform.CompileStatic
 
-@Commons
+@Slf4j
 class SeedService {
 
 	static transactional = false
@@ -140,7 +141,7 @@ class SeedService {
 			byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
 			byName[tmpSeedName] = byName[tmpSeedName] ?: []
 			def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
-			def checksum = getMD5FromStream(tmpFile.inputStream)
+			def checksum = getMD5FromStream(tmpFile.newInputStream())
 			
 			def tmpSeedSet
 			log.trace "seedFiles: ${seedFiles}"
