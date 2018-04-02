@@ -229,8 +229,10 @@ class SeedService {
 							if(value instanceof Map) {
 								setSeedValue(saveData, key, value)
 							}
+						} else if(tmpProp.isBasicCollectionType()) {
+							setSeedValue(saveData, key, value)
 						} else {
-							log.warn "Association is not handled thus this object may not be seeded"
+							log.warn "Association is not handled thus this object may not be seeded: ${tmpProp.getName()} type: ${tmpProp.getType()?.getName()}"
 						}
 					}
 					// if domain class property type is an enum, transform value into the appropriate enum type
