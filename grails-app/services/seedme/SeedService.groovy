@@ -604,6 +604,7 @@ class SeedService {
 						log.error("error processing seed set ${set.name}",setError)
 					}
 				}
+				return true
 			}
 			
 			waitAll(seedTask)
