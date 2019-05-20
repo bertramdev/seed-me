@@ -2,14 +2,21 @@ package seedme
 
 import grails.util.Environment
 import groovy.text.GStringTemplateEngine
-import grails.core.GrailsDomainClass
-import grails.core.GrailsDomainClassProperty
 
 import java.security.MessageDigest
 import java.security.DigestInputStream
 import javax.xml.bind.DatatypeConverter
 
-import org.grails.plugins.domain.DomainClassGrailsPlugin
+import org.grails.datastore.mapping.model.PersistentEntity
+import org.grails.datastore.mapping.model.PersistentProperty
+import org.grails.datastore.mapping.model.types.Association
+import org.grails.datastore.mapping.model.types.Basic
+import org.grails.datastore.mapping.model.types.ManyToMany
+import org.grails.datastore.mapping.model.types.ManyToOne
+import org.grails.datastore.mapping.model.types.OneToMany
+import org.grails.datastore.mapping.model.types.OneToOne
+import org.grails.datastore.mapping.model.types.ToOne
+
 import groovy.util.logging.Commons
 import grails.util.BuildSettings
 import org.apache.commons.io.FilenameUtils as FNU
@@ -24,6 +31,8 @@ class SeedService {
 
 	static transactional = false
 
+	org.grails.datastore.mapping.model.MappingContext grailsDomainClassMappingContext
+	
 	GrailsApplication grailsApplication
 	GrailsPluginManager pluginManager
 	def sessionFactory
@@ -199,45 +208,45 @@ class SeedService {
 	}
 
 	def processSeedItem(seedItem) {
-		GrailsDomainClass tmpDomain = grailsApplication.getArtefactByLogicalPropertyName('Domain', seedItem.domainClass)
+		def tmpDomain = grailsDomainClassMappingContext.getPersistentEntity("agora.${seedItem.domainClass.capitalize()}")
 		def tmpMeta = seedItem.meta
 		if(tmpDomain && tmpMeta.key) {
 			def tmpData = seedItem.data
 			def saveData = [:]
 			tmpData.each { key, value ->
-				GrailsDomainClassProperty tmpProp = tmpDomain.getPersistentProperty(key)
+				def tmpProp = tmpDomain.getPropertyByName(key)
 				if(tmpProp) {
-					if(tmpProp.isAssociation()) {
-						def subDomain = tmpProp.getReferencedDomainClass()
-						if(tmpProp.isOneToMany()) {
+					if(tmpProp instanceof Association) {
+						def subDomain = tmpProp.associatedEntity
+						if(tmpProp instanceof OneToMany) {
 							if(value instanceof Map) {
 								setSeedValue(saveData, key, value, subDomain)
 							} else if(value instanceof List) {
 								setSeedValue(saveData, key, value, subDomain)
 							}
-						} else if(tmpProp.isHasOne() || tmpProp.isOneToOne()) {
+						} else if((tmpProp instanceof ToOne) || (tmpProp instanceof OneToOne )) {
 							if(value instanceof Map) {
 								setSeedValue(saveData, key, value)
 							}
-						} else if(tmpProp.isManyToMany()) {
+						} else if(tmpProp instanceof ManyToMany) {
 							if(value instanceof Map) {
 								setSeedValue(saveData, key, value, subDomain)
 							} else if(value instanceof List) {
 								setSeedValue(saveData, key, value, subDomain)
 							}
-						} else if(tmpProp.isManyToOne()) {
+						} else if(tmpProp instanceof ManyToOne) {
 							if(value instanceof Map) {
 								setSeedValue(saveData, key, value)
 							}
-						} else if(tmpProp.isBasicCollectionType()) {
+						} else if(tmpProp instanceof Basic) {
 							setSeedValue(saveData, key, value)
 						} else {
 							log.warn "Association is not handled thus this object may not be seeded: ${tmpProp.getName()} type: ${tmpProp.getType()?.getName()}"
 						}
 					}
 					// if domain class property type is an enum, transform value into the appropriate enum type
-					else if (tmpProp.isEnum() && value instanceof String) {
-						setSeedValue(saveData, key, Enum.valueOf(tmpProp.referencedPropertyType, value))
+					else if (tmpProp.type.isEnum() && value instanceof String) {
+						setSeedValue(saveData, key, Enum.valueOf(tmpProp.type, value))
 					}
 					else {
 						setSeedValue(saveData, key, value)
@@ -592,16 +601,18 @@ class SeedService {
 			 (seedCheck?.checksum != set.checksum)) {
 			log.info "Processing $setKey"
 			def seedTask = task {
-				SeedMeChecksum.withNewSession { session -> 
-					try {
-						set.seedList.each this.&processSeedItem
-						updateChecksum(seedCheck?.id, set.checksum, setKey)
-						seedSetsLeft[setKey] = null
-						seedSetsLeft.remove(setKey)
-						seedOrder << set.name
-						gormFlush(session)
-					} catch(setError) {
-						log.error("error processing seed set ${set.name}",setError)
+				SeedMeChecksum.withNewSession { session ->
+					SeedMeChecksum.withTransaction {
+						try {
+							set.seedList.each this.&processSeedItem
+							updateChecksum(seedCheck?.id, set.checksum, setKey)
+							seedSetsLeft[setKey] = null
+							seedSetsLeft.remove(setKey)
+							seedOrder << set.name
+							gormFlush(session)
+						} catch(setError) {
+							log.error("error processing seed set ${set.name}",setError)
+						}
 					}
 				}
 				return true
