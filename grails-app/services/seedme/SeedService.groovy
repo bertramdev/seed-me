@@ -157,7 +157,8 @@ class SeedService {
 			if(checkChecksum(tmpSetKey).checksum != checksum) {
 				tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)	
 			} else {
-				tmpSeedSet = [seedList: [], dependsOn: [], name: tmpSeedName, plugin: pluginName, checksum: checksum]
+				tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName,true)	
+				// tmpSeedSet = [seedList: [], dependsOn: [], name: tmpSeedName, plugin: pluginName, checksum: checksum]
 			}
 			seedSets[tmpSetKey] = tmpSeedSet
 			byPlugin[pluginName][tmpSetKey] = tmpSeedSet
@@ -188,7 +189,7 @@ class SeedService {
 		
 	}
 
-	private buildSeedSet(name, seedContent, plugin = null) {
+	private buildSeedSet(name, seedContent, plugin = null, Boolean checksumMatched=false) {
 		def rtn = [seedList:[], dependsOn:[], name:name, plugin:plugin]
 		try {
 			def tmpBinding = new Binding()
@@ -198,7 +199,11 @@ class SeedService {
 			def tmpBuilder = new SeedBuilder()
 			tmpBuilder.seed(tmpBinding.getVariable('seed'))
 			rtn.dependsOn = tmpBuilder.dependsOn
-			rtn.seedList.addAll(tmpBuilder.seedList)
+			rtn.checksumMatched = checksumMatched
+			if(!checksumMatched) {
+				rtn.seedList.addAll(tmpBuilder.seedList)	
+			}
+			
 
 		} catch(e) {
 			log.error("error building seed set ${name}",e)
@@ -594,32 +599,35 @@ class SeedService {
 				deps.each {dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByPlugin, seedSetsByName, seedOrder)}
 			}
 		}
-
-		// if this seed set is in the list, run it
-	def seedCheck = checkChecksum(setKey)
-		if(seedSetsLeft[setKey] && 
-			 (seedCheck?.checksum != set.checksum)) {
-			log.info "Processing $setKey"
-			def seedTask = task {
-				SeedMeChecksum.withNewSession { session ->
-					SeedMeChecksum.withTransaction {
-						try {
-							set.seedList.each this.&processSeedItem
-							updateChecksum(seedCheck?.id, set.checksum, setKey)
-							seedSetsLeft[setKey] = null
-							seedSetsLeft.remove(setKey)
-							seedOrder << set.name
-							gormFlush(session)
-						} catch(setError) {
-							log.error("error processing seed set ${set.name}",setError)
+		if(!set.checksumMatched) {
+			// if this seed set is in the list, run it
+			def seedCheck = checkChecksum(setKey)
+			if(seedSetsLeft[setKey] && 
+				 (seedCheck?.checksum != set.checksum)) {
+				log.info "Processing $setKey"
+				def seedTask = task {
+					SeedMeChecksum.withNewSession { session ->
+						SeedMeChecksum.withTransaction {
+							try {
+								set.seedList.each this.&processSeedItem
+								updateChecksum(seedCheck?.id, set.checksum, setKey)
+								seedSetsLeft[setKey] = null
+								seedSetsLeft.remove(setKey)
+								seedOrder << set.name
+								gormFlush(session)
+							} catch(setError) {
+								log.error("error processing seed set ${set.name}",setError)
+							}
 						}
 					}
+					return true
 				}
-				return true
+				
+				waitAll(seedTask)
 			}
-			
-			waitAll(seedTask)
 		}
+
+		
 	}
 
 	private checkChecksum(seedName) {
