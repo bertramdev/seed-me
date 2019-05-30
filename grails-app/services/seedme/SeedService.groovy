@@ -213,7 +213,7 @@ class SeedService {
 	}
 
 	def processSeedItem(seedItem) {
-		def tmpDomain = grailsDomainClassMappingContext.getPersistentEntity("agora.${seedItem.domainClass.capitalize()}")
+		def tmpDomain = lookupDomain(seedItem.domainClass)
 		def tmpMeta = seedItem.meta
 		if(tmpDomain && tmpMeta.key) {
 			def tmpData = seedItem.data
@@ -671,5 +671,11 @@ class SeedService {
 		// dependency names may already contain the plugin name, so check first
 		if(name.contains('.')) return name
 		else "${pluginName ? "${pluginName}." : ''}${name}"
+	}
+
+	private lookupDomain(domainClassName) {
+		def capitalized = domainClassName.capitalize()
+		def domains = grailsDomainClassMappingContext.persistentEntities*.name
+		grailsDomainClassMappingContext.getPersistentEntity(domains.find { it.endsWith(".${capitalized}") })
 	}
 }
