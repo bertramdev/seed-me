@@ -140,7 +140,7 @@ class SeedService {
 	private buildSeedSets(seedFiles) {
 		def seedSets = [:], byPlugin = [:], byName = [:]
 		def filesChanged=false
-		for(seedFile2 in seedfiles) {
+		for(seedFile2 in seedFiles) {
 			def tmpFile    = seedFile2.file
 			def tmpSeedName = getSeedSetName(seedFile2.name)
 			def pluginName = seedFile2.plugin ?: 'application'
@@ -152,31 +152,36 @@ class SeedService {
 			}
 		}
 
-		seedFiles.each { seedFile ->
+		if(filesChanged) {
+			seedFiles.each { seedFile ->
 
-			//change to call below method
-			def tmpFile    = seedFile.file
-			def pluginName = seedFile.plugin ?: 'application'
-			def tmpContent = tmpFile.getText()
+				//change to call below method
+				def tmpFile    = seedFile.file
+				def pluginName = seedFile.plugin ?: 'application'
+				def tmpContent = tmpFile.getText()
 
-			def tmpSeedName = getSeedSetName(seedFile.name)
-			byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
-			byName[tmpSeedName] = byName[tmpSeedName] ?: []
-			def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
-			def checksum = getMD5FromStream(tmpFile.newInputStream())
-			
-			def tmpSeedSet
-			log.trace "seedFiles: ${seedFiles}"
-			if(checkChecksum(tmpSetKey).checksum != checksum) {
-				tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)	
-			} else {
-				tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName,true)	
-				// tmpSeedSet = [seedList: [], dependsOn: [], name: tmpSeedName, plugin: pluginName, checksum: checksum]
+				def tmpSeedName = getSeedSetName(seedFile.name)
+				byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
+				byName[tmpSeedName] = byName[tmpSeedName] ?: []
+				def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
+				def checksum = getMD5FromStream(tmpFile.newInputStream())
+				
+				def tmpSeedSet
+				log.trace "seedFiles: ${seedFiles}"
+				if(checkChecksum(tmpSetKey).checksum != checksum) {
+					tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)	
+				} else {
+					tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName,true)	
+					// tmpSeedSet = [seedList: [], dependsOn: [], name: tmpSeedName, plugin: pluginName, checksum: checksum]
+				}
+				seedSets[tmpSetKey] = tmpSeedSet
+				byPlugin[pluginName][tmpSetKey] = tmpSeedSet
+				byName[tmpSeedName] << tmpSeedSet	
 			}
-			seedSets[tmpSetKey] = tmpSeedSet
-			byPlugin[pluginName][tmpSetKey] = tmpSeedSet
-			byName[tmpSeedName] << tmpSeedSet	
-		}
+			} else {
+				return [[],[:],[:]]
+			}
+		
 
 		return [seedSets, byPlugin, byName]
 	}
