@@ -1,6 +1,9 @@
 package seedme
 
 import grails.plugins.*
+import grails.util.Environment
+import java.lang.management.ManagementFactory
+import java.lang.management.RuntimeMXBean;
 
 class SeedMeGrailsPlugin extends Plugin {
 
@@ -65,14 +68,55 @@ Brief summary/description of the plugin.
         }
     }
 
+    private isReloaded() {
+        Boolean isReloaded = false
+        try {
+            if(Environment.isDevelopmentMode()) {
+                File pidFile = new File('build/.grailspid')
+                RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+                if(pidFile.exists())  {
+                    if(runtimeBean.name == pidFile.text) {
+                        isReloaded = true
+                    } else {
+                        def os = pidFile.newOutputStream()
+                        os << runtimeBean.name
+                        os.flush()
+                        os.close()
+                    }
+                } else {
+                    pidFile.createNewFile()
+                    def os = pidFile.newOutputStream()
+                    os << runtimeBean.name
+                    os.flush()
+                    os.close()
+                }
+            }
+        } catch(ex) {
+            println "Seed-Me Reload Detection Error: ${ex.message}"
+        }
+        return isReloaded
+    }
+
+    private cleanupReloadedPid() {
+        try {
+            if(Environment.isDevelopmentMode()) {
+                File pidFile = new File('build/.grailspid')
+                if(pidFile.exists()) {
+                    pidFile.delete()
+                }
+            }
+        } catch(ex) {
+
+        }
+    }
+
     void onStartup(Map<String, Object> event) {
-        println "Bootstrapping Seed-me plugin"
         def seedService = applicationContext['seedService']
         def autoSeed = grailsApplication.config.grails.plugin.seed.autoSeed
         if(!(autoSeed instanceof Boolean)) {
             autoSeed = false
         }
-        if(autoSeed == true || System.getProperty('autoSeed', 'false') == 'true') {
+        if(!isReloaded() && (autoSeed == true || System.getProperty('autoSeed', 'false') == 'true')) {
             SeedMeChecksum.withNewSession { session ->
                 seedService.installSeedData()
             }
@@ -87,6 +131,7 @@ Brief summary/description of the plugin.
     }
 
     void onShutdown(Map<String, Object> event) {
+        cleanupReloadedPid()
         // TODO Implement code that is executed when the application shuts down (optional)
     }
 }

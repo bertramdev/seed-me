@@ -139,6 +139,19 @@ class SeedService {
 
 	private buildSeedSets(seedFiles) {
 		def seedSets = [:], byPlugin = [:], byName = [:]
+		def filesChanged=false
+		for(seedFile2 in seedfiles) {
+			def tmpFile    = seedFile2.file
+			def tmpSeedName = getSeedSetName(seedFile2.name)
+			def pluginName = seedFile2.plugin ?: 'application'
+			def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
+			def checksum = getMD5FromStream(tmpFile.newInputStream())
+			if(checkChecksum(tmpSetKey).checksum != checksum) {
+				filesChanged = true
+				break
+			}
+		}
+
 		seedFiles.each { seedFile ->
 
 			//change to call below method
