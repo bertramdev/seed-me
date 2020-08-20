@@ -3,7 +3,7 @@ package seedme
 import grails.plugins.*
 import grails.util.Environment
 import java.lang.management.ManagementFactory
-import java.lang.management.RuntimeMXBean;
+import java.lang.management.RuntimeMXBean
 
 class SeedMeGrailsPlugin extends Plugin {
 
@@ -68,47 +68,7 @@ Brief summary/description of the plugin.
         }
     }
 
-    private isReloaded() {
-        Boolean isReloaded = false
-        try {
-            if(Environment.isDevelopmentMode()) {
-                File pidFile = new File('build/.grailspid')
-                RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
-                if(pidFile.exists())  {
-                    if(runtimeBean.name == pidFile.text) {
-                        isReloaded = true
-                    } else {
-                        def os = pidFile.newOutputStream()
-                        os << runtimeBean.name
-                        os.flush()
-                        os.close()
-                    }
-                } else {
-                    pidFile.createNewFile()
-                    def os = pidFile.newOutputStream()
-                    os << runtimeBean.name
-                    os.flush()
-                    os.close()
-                }
-            }
-        } catch(ex) {
-            println "Seed-Me Reload Detection Error: ${ex.message}"
-        }
-        return isReloaded
-    }
 
-    private cleanupReloadedPid() {
-        try {
-            if(Environment.isDevelopmentMode()) {
-                File pidFile = new File('build/.grailspid')
-                if(pidFile.exists()) {
-                    pidFile.delete()
-                }
-            }
-        } catch(ex) {
-
-        }
-    }
 
     void onStartup(Map<String, Object> event) {
         def seedService = applicationContext['seedService']
@@ -116,7 +76,7 @@ Brief summary/description of the plugin.
         if(!(autoSeed instanceof Boolean)) {
             autoSeed = false
         }
-        if(!isReloaded() && (autoSeed == true || System.getProperty('autoSeed', 'false') == 'true')) {
+        if(!Environment.isDevtoolsRestart() && (autoSeed == true || System.getProperty('autoSeed', 'false') == 'true')) {
             SeedMeChecksum.withNewSession { session ->
                 seedService.installSeedData()
             }
