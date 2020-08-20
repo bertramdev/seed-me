@@ -91,7 +91,6 @@ Brief summary/description of the plugin.
     }
 
     void onShutdown(Map<String, Object> event) {
-        cleanupReloadedPid()
         // TODO Implement code that is executed when the application shuts down (optional)
     }
 }

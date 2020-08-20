@@ -61,9 +61,6 @@ dependencies {
     testCompile "org.grails:grails-plugin-testing"
 }
 
-task wrapper(type: Wrapper) {
-    gradleVersion = gradleWrapperVersion
-}
 
 bintray {
     publications = ['maven']
