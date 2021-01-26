@@ -1,14 +1,9 @@
 package seedme
 
-import grails.test.mixin.TestMixin
-import grails.test.mixin.support.GrailsUnitTestMixin
-import spock.lang.*
-
-import grails.test.mixin.domain.DomainClassUnitTestMixin
-
-import static org.junit.Assert.*
-import grails.test.mixin.TestFor
-import grails.test.mixin.*
+import grails.gorm.annotation.Entity
+import grails.testing.gorm.DataTest
+import grails.testing.services.ServiceUnitTest
+import spock.lang.Specification
 
 enum SomeEnumType {
 	value1,
@@ -16,6 +11,7 @@ enum SomeEnumType {
 	value3
 }
 
+@Entity
 class SomeDomainObject {
     String id
     String version
@@ -27,6 +23,7 @@ class SomeDomainObject {
 	SomeEnumType someEnum
 }
 
+@Entity
 class SomeOtherDomainObject {
     String id
     String version
@@ -38,6 +35,7 @@ class SomeOtherDomainObject {
 	SomeEnumType someEnum
 }
 
+@Entity
 class MapOfStringsDomainObject {
     String id
     String version
@@ -46,63 +44,65 @@ class MapOfStringsDomainObject {
     static hasMany = [attributes:String]
 }
 
-/**
- * See the API for {@link grails.test.mixin.support.GrailsUnitTestMixin} for usage instructions
- */
-@TestMixin(DomainClassUnitTestMixin)
-@TestFor(SeedService)
-class SeedServiceSpec extends Specification {
+class SeedServiceSpec extends Specification implements ServiceUnitTest<SeedService>, DataTest {
 
     def setup() {
     }
 
     def cleanup() {
     }
+
     def testInstallSeedData() {
+        given:
         mockDomain(SeedMeChecksum)
         mockDomain(SomeDomainObject)
         mockDomain(SomeOtherDomainObject)
         mockDomain(MapOfStringsDomainObject)
 
-        def someDomains = SomeDomainObject.findAll();
+        def someDomains = SomeDomainObject.findAll()
         def someOtherDomains = SomeOtherDomainObject.findAll()
         def someMapOfStringsDomains = MapOfStringsDomainObject.findAll()
-        assertEquals(0, someDomains.size())
-        assertEquals(0, someOtherDomains.size())
-        assertEquals(0, someMapOfStringsDomains.size())
+        assert 0 == someDomains.size()
+        assert 0 == someOtherDomains.size()
+        assert 0 == someMapOfStringsDomains.size()
 
+        when:
         service.installSeedData()
 
-        someDomains = SomeDomainObject.findAll();
+        someDomains = SomeDomainObject.findAll()
         someOtherDomains = SomeOtherDomainObject.findAll()
         someMapOfStringsDomains = MapOfStringsDomainObject.findAll()
-        assertEquals(2, someDomains.size())
-        assertEquals(2, someOtherDomains.size())
+
+        then:
+        2 == someDomains.size()
+        2 == someOtherDomains.size()
         println someMapOfStringsDomains
-        assertEquals(1, someMapOfStringsDomains.size())
-        assertEquals('poopy', someMapOfStringsDomains[0].attributes['poop'])
-	    assertEquals(SomeEnumType.value1, SomeDomainObject.findByCode('a').someEnum)
-	    assertEquals(SomeEnumType.value3, SomeDomainObject.findByCode('b').someEnum)
-	    assertEquals(SomeEnumType.value2, SomeOtherDomainObject.findByExtId('1').someEnum)
-	    assertEquals(SomeEnumType.value1, SomeOtherDomainObject.findByExtId('2').someEnum)
+        1 == someMapOfStringsDomains.size()
+        'poopy' == someMapOfStringsDomains[0].attributes['poop']
+	    SomeEnumType.value1 == SomeDomainObject.findByCode('a').someEnum
+	    SomeEnumType.value3 == SomeDomainObject.findByCode('b').someEnum
+	    SomeEnumType.value2 == SomeOtherDomainObject.findByExtId('1').someEnum
+	    SomeEnumType.value1 == SomeOtherDomainObject.findByExtId('2').someEnum
     }
 
     def testInstallNamedSeed() {
+        given:
         mockDomain(SeedMeChecksum)
         mockDomain(SomeDomainObject)
         mockDomain(SomeOtherDomainObject)
 
         def someDomains = SomeDomainObject.findAll();
         def someOtherDomains = SomeOtherDomainObject.findAll()
-        assertEquals(0, someDomains.size())
-        assertEquals(0, someOtherDomains.size())
+        assert 0 == someDomains.size()
+        assert 0 == someOtherDomains.size()
 
+        when:
         service.installSeedData("application.SomeDomainObjectSeed")
-
         someDomains = SomeDomainObject.findAll();
         someOtherDomains = SomeOtherDomainObject.findAll()
-        assertEquals(2, someDomains.size())
-        assertEquals(0, someOtherDomains.size())
 
+        then:
+        2 == someDomains.size()
+        0 == someOtherDomains.size()
     }
 }

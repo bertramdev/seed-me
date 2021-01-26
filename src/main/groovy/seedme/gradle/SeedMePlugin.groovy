@@ -30,10 +30,9 @@ import groovy.io.FileType
 import org.gradle.language.jvm.tasks.ProcessResources
 
 /**
- * This is the Gradle Plugin implementation of asset-pipeline-core. It provides a set of tasks useful for working with your assets directly
+ * This is the Gradle Plugin implementation of SeedMe.
  *
- * task: assetCompile Compiles your assets into your build directory
- * task: assetClean Cleans the build/assets directory
+ * task: seedPackage Compiles your seeds into your build directory
  *
  * @author David Estes
  * @author Graeme Rocher
