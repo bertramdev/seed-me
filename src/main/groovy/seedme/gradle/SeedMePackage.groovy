@@ -46,7 +46,7 @@ class SeedMePackage extends DefaultTask {
     @CompileDynamic
     void compile() {
         def manifestNames = []
-        File seedDestDir =  new File(destinationDir,"seed")
+        File seedDestDir = new File(destinationDir,"seed")
         if(seedDestDir.exists()) {
             seedDestDir.deleteDir()
             seedDestDir.mkdirs()
@@ -87,7 +87,7 @@ class SeedMePackage extends DefaultTask {
 
             }
         }
-        File seedList = new File(destinationDir,"seeds.list")
+        File seedList = new File(destinationDir, "seeds.list")
         if(!seedList.exists()) {
             seedList.parentFile.mkdirs()
             seedList.createNewFile()

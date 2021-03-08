@@ -41,6 +41,8 @@ class SeedService {
 	private checkSumLoaded =  new ThreadLocal()
 	private checkSums = new ThreadLocal()
 
+	static environmentList = ['dev', 'test', 'prod']
+
 	void installSeedData() {
 		
 		log.info("seedService.installSeedData")
@@ -48,7 +50,7 @@ class SeedService {
 
 		log.info("seedService - processing ${seedFiles?.size()} files")
 		def startTime = new Date().time
-		def (seedSets, seedSetByPlugin, seedSetsByName)    = buildSeedSets(seedFiles)
+		def (seedSets, seedSetByPlugin, seedSetsByName) = buildSeedSets(seedFiles)
 		// make a copy so we can remove items from one list as they are processed, another to
 		// iterate through
 		def seedSetsToRun = seedSets.clone()
@@ -96,13 +98,13 @@ class SeedService {
 			println("processing external seed")
 			tmpSet.seedList?.each { tmpSeed ->
 				try {
-					processSeedItem(tmpSeed)
+					processSeedItem(tmpSet, tmpSeed)
 				} catch(e) {
 					log.error("error processing seed item ${tmpSeed}",e)
 					throw e
 				}
 			}
-			processSeedItem(tmpSet)
+			processSeedItem(tmpSet, tmpSet)
 		} catch(e) {
 			//log.error(e)
 			throw e
@@ -124,13 +126,13 @@ class SeedService {
 			log.info("processing inline seed")
 			tmpSet.seedList?.each { tmpSeed ->
 				try {
-					processSeedItem(tmpSeed)
+					processSeedItem(tmpSet, tmpSeed)
 				} catch(e) {
 					log.error("error processing seed item ${tmpSeed}",e)
 					throw e
 				}
 			}
-			processSeedItem(tmpSet)
+			processSeedItem(tmpSet, tmpSet)
 		} catch(e) {
 			//log.error(e)
 			throw e
@@ -139,7 +141,7 @@ class SeedService {
 
 	private buildSeedSets(seedFiles) {
 		def seedSets = [:], byPlugin = [:], byName = [:]
-		def filesChanged=false
+		def filesChanged = false
 		for(seedFile2 in seedFiles) {
 			def tmpFile    = seedFile2.file
 			def tmpSeedName = getSeedSetName(seedFile2.name)
@@ -154,12 +156,11 @@ class SeedService {
 
 		if(filesChanged) {
 			seedFiles.each { seedFile ->
-
 				//change to call below method
 				def tmpFile    = seedFile.file
 				def pluginName = seedFile.plugin ?: 'application'
 				def tmpContent = tmpFile.getText()
-
+				def tmpType = seedFile.type
 				def tmpSeedName = getSeedSetName(seedFile.name)
 				byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
 				byName[tmpSeedName] = byName[tmpSeedName] ?: []
@@ -169,20 +170,19 @@ class SeedService {
 				def tmpSeedSet
 				log.trace "seedFiles: ${seedFiles}"
 				if(checkChecksum(tmpSetKey).checksum != checksum) {
-					tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName)	
+					tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName, tmpType)	
 				} else {
-					tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName,true)	
+					tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName, tmpType, true)	
 					// tmpSeedSet = [seedList: [], dependsOn: [], name: tmpSeedName, plugin: pluginName, checksum: checksum]
 				}
+				tmpSeedSet.seedFile = seedFile
 				seedSets[tmpSetKey] = tmpSeedSet
 				byPlugin[pluginName][tmpSetKey] = tmpSeedSet
 				byName[tmpSeedName] << tmpSeedSet	
 			}
-			} else {
-				return [[],[:],[:]]
-			}
-		
-
+		} else {
+			return [[],[:],[:]]
+		}
 		return [seedSets, byPlugin, byName]
 	}
 
@@ -207,30 +207,70 @@ class SeedService {
 		
 	}
 
-	private buildSeedSet(name, seedContent, plugin = null, Boolean checksumMatched=false) {
+	private buildSeedSet(name, seedContent, plugin = null, type = 'groovy', Boolean checksumMatched = false) {
 		def rtn = [seedList:[], dependsOn:[], name:name, plugin:plugin]
 		try {
-			def tmpBinding = new Binding()
-			tmpBinding.setVariable("grailsApplication", grailsApplication)
-			def tmpConfig = new GroovyShell(this.class.classLoader, tmpBinding).evaluate(seedContent,plugin ? "${plugin}:${name}" : name)
+			//common 
 			rtn.checksum = MessageDigest.getInstance('MD5').digest(seedContent.bytes).encodeHex().toString()
-			def tmpBuilder = new SeedBuilder()
-			tmpBuilder.seed(tmpBinding.getVariable('seed'))
-			rtn.dependsOn = tmpBuilder.dependsOn
 			rtn.checksumMatched = checksumMatched
-			if(!checksumMatched) {
-				rtn.seedList.addAll(tmpBuilder.seedList)	
-			}
-			
-
+			//if the type is groovy
+			if(type == 'groovy') {
+				if(!checksumMatched) {
+					def tmpBinding = new Binding()
+					tmpBinding.setVariable("grailsApplication", grailsApplication)
+					def tmpConfig = new GroovyShell(this.class.classLoader, tmpBinding).evaluate(seedContent, plugin ? "${plugin}:${name}" : name)
+					def tmpBuilder = new SeedBuilder()
+					tmpBuilder.seed(tmpBinding.getVariable('seed'))
+					rtn.dependsOn = tmpBuilder.dependsOn
+					rtn.checksumMatched = checksumMatched
+					rtn.seedList.addAll(tmpBuilder.seedList)
+				}
+			} else if(type == 'json') {
+				if(!checksumMatched) {
+					//parse it - expected format: { dependsOn:[], seed:{domainClass:[]}}
+					def parsedSeed = seedContent ? new groovy.json.JsonSlurper().parseText(seedContent) : [:]
+					rtn.dependsOn = parsedSeed?.dependsOn ?: []
+					//iterate the seed
+					parsedSeed?.seed?.each { key, value ->
+						//key is a domain - value is an array
+						value?.each { seedItem ->
+							def row = [domainClass:key, meta:[:]]
+							if(seedItem.meta) {
+								row.meta = seedItem.meta
+								seedItem.remove('meta')
+							}
+							row.data = seedItem
+							rtn.seedList << row
+						}
+					}
+				}
+			} else if(type == 'yaml') {
+				if(!checksumMatched) {
+					//parse it - expected format: { dependsOn:[], seed:{domainClass:[]}}
+					def parsedSeed = seedContent ? new org.yaml.snakeyaml.Yaml().load(seedContent) : [:]
+					rtn.dependsOn = parsedSeed?.dependsOn ?: []
+					//iterate the seed
+					parsedSeed?.seed?.each { key, value ->
+						//key is a domain - value is an array
+						value?.each { seedItem ->
+							def row = [domainClass:key, meta:[:]]
+							if(seedItem.meta) {
+								row.meta = seedItem.meta
+								seedItem.remove('meta')
+							}
+							row.data = seedItem
+							rtn.seedList << row
+						}
+					}
+				}
+			} //TODO - add yaml!
 		} catch(e) {
 			log.error("error building seed set ${name}",e)
 		}
-
 		return rtn
 	}
 
-	def processSeedItem(seedItem) {
+	def processSeedItem(seedSet, seedItem) {
 		def tmpDomain = lookupDomain(seedItem.domainClass)
 		def tmpMeta = seedItem.meta
 		if(tmpDomain && tmpMeta.key) {
@@ -243,39 +283,39 @@ class SeedService {
 						def subDomain = tmpProp.associatedEntity
 						if(tmpProp instanceof OneToMany) {
 							if(value instanceof Map) {
-								setSeedValue(saveData, key, value, subDomain)
+								setSeedValue(seedSet, saveData, key, value, subDomain)
 							} else if(value instanceof List) {
-								setSeedValue(saveData, key, value, subDomain)
+								setSeedValue(seedSet, saveData, key, value, subDomain)
 							}
 						} else if((tmpProp instanceof ToOne) || (tmpProp instanceof OneToOne )) {
 							if(value instanceof Map) {
-								setSeedValue(saveData, key, value)
+								setSeedValue(seedSet, saveData, key, value, subDomain)
 							}
 						} else if(tmpProp instanceof ManyToMany) {
 							if(value instanceof Map) {
-								setSeedValue(saveData, key, value, subDomain)
+								setSeedValue(seedSet, saveData, key, value, subDomain)
 							} else if(value instanceof List) {
-								setSeedValue(saveData, key, value, subDomain)
+								setSeedValue(seedSet, saveData, key, value, subDomain)
 							}
 						} else if(tmpProp instanceof ManyToOne) {
 							if(value instanceof Map) {
-								setSeedValue(saveData, key, value)
+								setSeedValue(seedSet, saveData, key, value, subDomain)
 							}
 						} else if(tmpProp instanceof Basic) {
-							setSeedValue(saveData, key, value)
+							setSeedValue(seedSet, saveData, key, value, subDomain)
 						} else {
 							log.warn "Association is not handled thus this object may not be seeded: ${tmpProp.getName()} type: ${tmpProp.getType()?.getName()}"
 						}
 					}
 					// if domain class property type is an enum, transform value into the appropriate enum type
 					else if (tmpProp.type.isEnum() && value instanceof String) {
-						setSeedValue(saveData, key, Enum.valueOf(tmpProp.type, value))
+						setSeedValue(seedSet, saveData, key, Enum.valueOf(tmpProp.type, value))
 					}
 					else {
-						setSeedValue(saveData, key, value)
+						setSeedValue(seedSet, saveData, key, value)
 					}
 				} else {
-					setSeedValue(saveData, key, value)
+					setSeedValue(seedSet, saveData, key, value)
 				}
 			}
 			def opts = [:]
@@ -286,7 +326,7 @@ class SeedService {
 		}
 	}
 
-	def setSeedValue(data, key, value, domain = null) {
+	def setSeedValue(seedSet, data, key, value, domain = null) {
 		def tmpCriteria = [:]
 		if(domain) {
 			if(value instanceof Map) {
@@ -306,7 +346,7 @@ class SeedService {
 					tmpCriteria = it
 					if(tmpSeedMeta && tmpSeedMeta['criteria']==true) {
 						it.each{ k, val  ->
-							setSeedValue(tmpCriteria,k,val)
+							setSeedValue(seedSet, tmpCriteria,k,val)
 						}
 					}
 					def tmpObj = findSeedObject(domain, tmpCriteria)
@@ -317,13 +357,13 @@ class SeedService {
 				}.findAll{it!=null}
 			}
 		//} else if (value instanceof Map && value[getMetaKey()]) {
-		} else if (value instanceof Map && value.containsKey('domainClass')) {
+		} else if(value instanceof Map && value.containsKey('domainClass')) {
 			value = value.clone() //Dont want to simply remove keys in case this value is reused elsewhere
 			def tmpMatchDomain = value.remove('domainClass')
 			def tmpObjectMeta = value.remove(getMetaKey())
 			if(tmpObjectMeta && tmpObjectMeta['criteria']==true) {
 				value.each{ k , val ->
-					setSeedValue(tmpCriteria,k,val)
+					setSeedValue(seedSet, tmpCriteria,k,val)
 				}
 				value = tmpCriteria
 			}
@@ -342,8 +382,20 @@ class SeedService {
 			if(seedObject) {
 				data[key] = seedObject
 			} 
-		} else if (value instanceof Map && value._literal == true) {
+		} else if(value instanceof Map && value._literal == true) {
 			data[key] = value.value
+		} else if(value instanceof Map && value._template == true) {
+			//load the content from a file
+			if(seedSet?.seedFile?.file) {
+				def parentFile = seedSet.seedFile.file.getParentFile()
+				def templateFile = new File(parentFile, value.value)
+				//println("loading seed template: ${templateFile.getPath()} - ${templateFile.exists()}")
+				if(templateFile.exists()) {
+					data[key] = templateFile.getText()
+				} else {
+					log.warn("seed value template not found: ${value.value}")
+				}
+			}
 		} else if(value instanceof CharSequence && value.toString().indexOf('$') >= 0) {
 			data[key] = new GStringTemplateEngine().createTemplate(value.toString()).make(getDomainBindingsForGString()).toString()
 		} else if(value instanceof Closure) {
@@ -373,7 +425,7 @@ class SeedService {
 			tmpOpts.remove('useField')
 			tmpOpts.remove('useClosure')
 			tmpOpts.remove('domainClass')
-			rtn = tmpInstance.findWhere(opts)
+			rtn = tmpInstance.findWhere(tmpOpts)
 			if(rtn) {
 				if(tmpMeta?.useId == true)
 					rtn = rtn.id
@@ -564,20 +616,33 @@ class SeedService {
 			def pluginName = seedPath.key
 			if(seedFolder.exists()) {
 				seedFolder?.eachFile { tmpFile ->
-					if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy') && !isSeedFileExcluded(tmpFile.name))
-						seedFiles << [file: tmpFile, name: tmpFile.name, plugin: pluginName]
+					if(!tmpFile.isDirectory() && !isSeedFileExcluded(tmpFile.name)) {
+						if(tmpFile.name.endsWith('.groovy'))
+							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'groovy']
+						else if(tmpFile.name.endsWith('.json'))
+							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'json']
+						else if(tmpFile.name.endsWith('.yaml'))
+							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'yaml']
+					}
 				}
 				seedFolder?.eachDir { tmpFolder ->
-					if(tmpFolder.name == env) {
+					if(tmpFolder.name == env || (tmpFolder.name == 'env-' + env) || //if the name matches for legacy or env- matches..
+							(!environmentList.contains(tmpFolder.name) && !tmpFolder.name.startsWith('env-'))) { //process sub folders that environment specific
 						tmpFolder.eachFile { tmpFile ->
-							if(!tmpFile.isDirectory() && tmpFile.name.endsWith('.groovy'))
-								seedFiles << [file: tmpFile, name: tmpFile.name, plugin: pluginName]
+							if(!tmpFile.isDirectory() && !isSeedFileExcluded(tmpFile.name)) {
+								if(tmpFile.name.endsWith('.groovy'))
+									seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'groovy']
+								else if(tmpFile.name.endsWith('.json'))
+									seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'json']
+								else if(tmpFile.name.endsWith('.yaml'))
+									seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'yaml']
+							}
 						}
 					}
 				}
 			}
 		}
-		seedFiles = seedFiles.sort{ a,b -> a.name <=> b.name}
+		seedFiles = seedFiles.sort{ a, b -> a.name <=> b.name }
 		return seedFiles
 	}
 
@@ -627,7 +692,9 @@ class SeedService {
 					SeedMeChecksum.withNewSession { session ->
 						SeedMeChecksum.withTransaction {
 							try {
-								set.seedList.each this.&processSeedItem
+								set.seedList.each { seedItem ->
+									processSeedItem(set, seedItem)
+								}
 								updateChecksum(seedCheck?.id, set.checksum, setKey)
 								seedSetsLeft[setKey] = null
 								seedSetsLeft.remove(setKey)
