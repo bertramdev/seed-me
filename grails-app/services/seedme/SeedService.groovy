@@ -387,13 +387,31 @@ class SeedService {
 		} else if(value instanceof Map && value._template == true) {
 			//load the content from a file
 			if(seedSet?.seedFile?.file) {
-				def parentFile = seedSet.seedFile.file.getParentFile()
-				def templateFile = new File(parentFile, value.value)
-				//println("loading seed template: ${templateFile.getPath()} - ${templateFile.exists()}")
-				if(templateFile.exists()) {
-					data[key] = templateFile.getText()
+				if(seedSet?.seedFile?.fileSource == 'classLoader') {
+
+					String seedNameArgs = seedSet?.seedFile.name.tokenize('/')
+					def templateFile = "seed/${value.value}"
+					if(seedNameArgs.size() > 1) {
+						templateFile = "seed/" + seedNameArgs[0..-1].join('/') + '/' + value.value
+					}
+					def res = grailsApplication.mainContext.getResource(templateFile)
+					if(!res.exists()) {
+						res = grailsApplication.mainContext.getResource("classpath:" + templateFile)
+					}
+					if(res.exists()) {
+						data[key] = res.getText('UTF-8')
+					} else {
+						log.warn("seed value template not found: ${value.value}")
+					}
 				} else {
-					log.warn("seed value template not found: ${value.value}")
+					def parentFile = seedSet.seedFile.file.getParentFile()
+					def templateFile = new File(parentFile, value.value)
+					//println("loading seed template: ${templateFile.getPath()} - ${templateFile.exists()}")
+					if(templateFile.exists()) {
+						data[key] = templateFile.getText()
+					} else {
+						log.warn("seed value template not found: ${value.value}")
+					}
 				}
 			}
 		} else if(value instanceof CharSequence && value.toString().indexOf('$') >= 0) {
@@ -588,12 +606,22 @@ class SeedService {
         def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
         def env = tmpEnvironmentFolder ?: Environment.current.name
 
-        seedList = seedList.findAll{ item -> item.startsWith("${env}/") || item.indexOf('/') == -1 }
+        seedList = seedList.findAll{ item -> 
+        	itemArgs = item.tokenize('/')
+        	return item.startsWith("${env}/") || item.startsWith("env-${env}/") || itemArgs.size() == 1 || !environmentList.contains(itemArgs[0]) 
+        }
 
         def seedFiles = []
         seedList.each { seedName ->
         	classLoader.getResources("seed/${seedName}")?.eachWithIndex {res, index ->
-        		seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}"]
+        		if(seedName.endsWith('.groovy')) {
+        			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'groovy', fileSource:'classLoader']
+        		} else if(seedName.endsWith('.yaml')) {
+        			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'yaml', fileSource:'classLoader']
+        		} else if(seedName.endsWith('.json')) {
+        			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'json', fileSource:'classLoader']	
+        		}
+        		
         	}
         }
         seedFiles = seedFiles.sort{ a,b -> a.name <=> b.name}
