@@ -5,6 +5,7 @@ SeedMe is a simple plugin that was created to provide an easy way to add config 
 
 Release Notes
 -------------
+* __4.1.4__: Actually Updated the ReadME Sorry! Added YAML,JSON seed template support
 * __0.6.5__: Fixed meta support to respect the update attribute
 * __0.6.2__: Fixing the ability to use map types as domain properties which are not associations
 * __0.6.1__: Added support for [enums](#EnumSupport)
@@ -31,14 +32,14 @@ _build.gradle_
 buildscript {
 
     dependencies {
-        classpath 'com.bertramlabs.plugins:seed-me:4.0.0'
+        classpath 'com.bertramlabs.plugins:seed-me:4.1.4'
     }
 }
 
 apply plugin: "seed-me"
 
 dependencies {
-  runtimeOnly 'com.bertramlabs.plugins:seed-me:4.0.0'
+  runtimeOnly 'com.bertramlabs.plugins:seed-me:4.1.4'
 }
 ```
 
@@ -56,8 +57,11 @@ project.tasks.processResources.dependsOn(project.task.create(Copy,"Copy Seed"){
 
 Details
 ---------------------------
-SeedMe looks for `.groovy` seed files in a seed folder inside the project `src` folder and in all included plugins.  Any files at the root of seed folder will be processed.
-SeedMe also checks for a folder in the seed folder with a name that matches the current running environment and will process any files found in that folder. The plugin also, only runs seeds that have not previously been run by maintaining a checksum of the seed files in the database.
+SeedMe looks for `.groovy`, `.yaml`, and `.json` seed files in the project `src/seed` folder and in all included plugins.  Any files at the root of seed folder will be processed as well as one level deaper.
+
+**NOTE:** If the folder name contains the word `templates/` this is reserved for template inclusion when dealing with large blobs
+
+SeedMe also checks for a folder in the seed folder with a name that matches the current running environment or `env-${currentEnvironment}` and will process any files found in that folder. The plugin also, only runs seeds that have not previously been run by maintaining a checksum of the seed files in the database.
 
 Seed DSL
 
@@ -66,10 +70,30 @@ Seed Examples
 This example is for a device.
 ```groovy
 seed  = {
-  device(meta:[key:'uniqueId', update:false], uniqueId:'1108', account:[uniqueId:'proconVoyagerLegacy'], name:'voyagerTest1108',
-      deviceType:[code:'montageIon'], serialNumber:'1108', imei:'100000000001108')
+  device(meta:[key:'uniqueId', update:false], uniqueId:'5555', account:[uniqueId:'testaccount'], name:'voyagerTest1108',
+      deviceType:[code:'ion'], serialNumber:'5555', imei:'0000000000000')
 }
 
+```
+
+or now in yaml:
+
+```yaml
+# dependencies
+dependsOn: []
+# seed entries
+seed:
+  device:
+  - meta:
+      key: code
+      update: false
+    uniqueId: 5555
+    account:
+      uniqueId: 'testaccount'
+    name: voyagerTest1108
+    deviceType: ion
+    serialNumber: 5555
+    imei: '0000000000000'
 ```
 
 Usage

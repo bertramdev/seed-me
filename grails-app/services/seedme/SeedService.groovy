@@ -616,7 +616,7 @@ class SeedService {
         	classLoader.getResources("seed/${seedName}")?.eachWithIndex {res, index ->
         		if(seedName.endsWith('.groovy')) {
         			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'groovy', fileSource:'classLoader']
-        		} else if(seedName.endsWith('.yaml')) {
+        		} else if(seedName.endsWith('.yaml') || seedName.endsWith('.yml')) {
         			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'yaml', fileSource:'classLoader']
         		} else if(seedName.endsWith('.json')) {
         			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'json', fileSource:'classLoader']	
@@ -649,7 +649,7 @@ class SeedService {
 							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'groovy']
 						else if(tmpFile.name.endsWith('.json'))
 							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'json']
-						else if(tmpFile.name.endsWith('.yaml'))
+						else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
 							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'yaml']
 					}
 				}
@@ -657,13 +657,14 @@ class SeedService {
 					if(tmpFolder.name == env || (tmpFolder.name == 'env-' + env) || //if the name matches for legacy or env- matches..
 							(!environmentList.contains(tmpFolder.name) && !tmpFolder.name.startsWith('env-'))) { //process sub folders that environment specific
 						tmpFolder.eachFile { tmpFile ->
+							def seedName = "${tmpFolder.name}/${tmpFile.name}"
 							if(!tmpFile.isDirectory() && !isSeedFileExcluded(tmpFile.name)) {
 								if(tmpFile.name.endsWith('.groovy'))
-									seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'groovy']
+									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'groovy']
 								else if(tmpFile.name.endsWith('.json'))
-									seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'json']
-								else if(tmpFile.name.endsWith('.yaml'))
-									seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'yaml']
+									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'json']
+								else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
+									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'yaml']
 							}
 						}
 					}
