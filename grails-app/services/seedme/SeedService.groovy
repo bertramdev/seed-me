@@ -608,7 +608,7 @@ class SeedService {
 
         seedList = seedList.findAll{ item -> 
         	def itemArgs = item.tokenize('/')
-        	return item.startsWith("${env}/") || item.startsWith("env-${env}/") || itemArgs.size() == 1 || !environmentList.contains(itemArgs[0]) 
+        	return item.startsWith("${env}/") || item.startsWith("env-${env}/") || itemArgs.size() == 1 || (!environmentList.contains(itemArgs[0]) && !item.contains('templates/'))
         }
 
         def seedFiles = []
