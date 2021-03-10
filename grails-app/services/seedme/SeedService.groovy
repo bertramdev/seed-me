@@ -607,7 +607,7 @@ class SeedService {
         def env = tmpEnvironmentFolder ?: Environment.current.name
 
         seedList = seedList.findAll{ item -> 
-        	itemArgs = item.tokenize('/')
+        	def itemArgs = item.tokenize('/')
         	return item.startsWith("${env}/") || item.startsWith("env-${env}/") || itemArgs.size() == 1 || !environmentList.contains(itemArgs[0]) 
         }
 
