@@ -389,19 +389,19 @@ class SeedService {
 			if(seedSet?.seedFile?.file) {
 				if(seedSet?.seedFile?.fileSource == 'classLoader') {
 
-					String seedNameArgs = seedSet?.seedFile.name.tokenize('/')
+					String[] seedNameArgs = seedSet?.seedFile.name.tokenize('/')
 					def templateFile = "seed/${value.value}"
 					if(seedNameArgs.size() > 1) {
-						templateFile = "seed/" + seedNameArgs[0..-1].join('/') + '/' + value.value
+						templateFile = "seed/" + seedNameArgs[0..-2].join('/') + '/' + value.value
 					}
 					def res = grailsApplication.mainContext.getResource(templateFile)
 					if(!res.exists()) {
 						res = grailsApplication.mainContext.getResource("classpath:" + templateFile)
 					}
 					if(res.exists()) {
-						data[key] = res.getText('UTF-8')
+						data[key] = res.inputStream.getText('UTF-8')
 					} else {
-						log.warn("seed value template not found: ${value.value}")
+						log.warn("seed value template not found: ${value.value} - templateFile: ${templateFile} - ${seedSet?.seedFile.name.tokenize('/')}")
 					}
 				} else {
 					def parentFile = seedSet.seedFile.file.getParentFile()
