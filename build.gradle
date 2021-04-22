@@ -1,63 +1,35 @@
 buildscript {
-    ext {
-        grailsVersion = project.grailsVersion
-    }
-    repositories {
-        mavenLocal()
-        maven { url "https://repo.grails.org/grails/core" }
-    }
-    dependencies {
-        classpath "org.grails:grails-gradle-plugin:$grailsVersion"
-        classpath "io.github.gradle-nexus:publish-plugin:1.0.0"
-    }
+	repositories {
+		mavenLocal()
+		mavenCentral()
+		maven { url "https://plugins.gradle.org/m2/" }
+	}
+	dependencies {
+		classpath "io.github.gradle-nexus:publish-plugin:1.0.0"
+	}
 }
 
-version "4.1.5"
-group "com.bertramlabs.plugins"
+plugins {
+	id 'java'
+	id 'groovy'
+	id 'java-library'
+    id 'signing'
+    id 'idea'
+    id 'maven-publish'
+}
 
-apply plugin:"eclipse"
-apply plugin:"idea"
-apply plugin:"org.grails.grails-plugin"
-apply plugin:"maven-publish"
-apply plugin:"signing"
-apply plugin:"java-library"
 
 ext {
-  grailsVersion = project.grailsVersion
-  isBuildSnapshot = version.endsWith('-SNAPSHOT')
-  isReleaseVersion = !isBuildSnapshot
+    isBuildSnapshot = version.endsWith('-SNAPSHOT')
+    isReleaseVersion = !isBuildSnapshot
 }
+
+
+group = 'com.bertramlabs.plugins'
 
 repositories {
-    mavenLocal()
-    maven { url "https://repo.grails.org/grails/core" }
-}
-
-
-java {
-    withSourcesJar()
-    withJavadocJar()
-}
-
-dependencies {
-    implementation gradleApi()
-    implementation 'org.springframework.boot:spring-boot-starter-logging'
-    implementation "org.springframework.boot:spring-boot-starter-actuator"
-    implementation "org.springframework.boot:spring-boot-autoconfigure"
-    implementation "org.springframework.boot:spring-boot-starter-tomcat"
-
-    implementation "org.grails:grails-web-boot"
-    implementation "org.grails:grails-dependencies"
-    implementation 'javax.servlet:javax.servlet-api:3.1.0'
-    implementation "com.h2database:h2"
-    api 'org.apache.commons:commons-io:1.3.2'
-    api 'org.yaml:snakeyaml:1.26'
-    console "org.grails:grails-console"
-    api "org.grails:grails-plugin-domain-class"
-    testCompile "io.micronaut:micronaut-inject-groovy"
-    testCompile "org.grails:grails-gorm-testing-support"
-    testCompile "org.mockito:mockito-core"
-    testCompile "org.grails:grails-web-testing-support"
+	jcenter()
+	mavenCentral()
 }
 
 if (isReleaseVersion) {
@@ -68,49 +40,15 @@ if (isReleaseVersion) {
                 if(project.hasProperty('mavenUser')) {
                     username = mavenUser
                     password = mavenPassword
-                }    
+                }   
             }
         }
     }
-} 
-
-publishing {
-    publications {
-        maven(MavenPublication) {
-            artifactId 'seed-me'
-            pom.withXml {
-                asNode().children().last() + {
-                    resolveStrategy = Closure.DELEGATE_FIRST
-                    name 'Seed Me'
-                    description 'Implements a standard convention for adding seed data to your Grails application.'
-                    url 'https://github.com/bertramdev/seed-me'
-                    scm {
-                        url 'https://github.com/bertramdev/seed-me'
-                        connection 'scm:https://bertramdev@github.com/bertramdev/seed-me.git'
-                        developerConnection 'scm:git://github.com/bertramdev/seed-me.git'
-                    }
-                    licenses {
-                        license {
-                            name 'The Apache Software License, Version 2.0'
-                            url 'http://www.apache.org/license/LICENSE-2.0.txt'
-                            distribution 'repo'
-                        }
-                    }
-                    developers {
-                        developer {
-                            id 'davydotcom'
-                            name 'David Estes'
-                            email 'davydotcom@gmail.com'
-                        }
-                    }
-                }
-            }
-            from components.java
-        }
-    }
-    repositories {
-        maven {
-            if( !isReleaseVersion ) {
+} else {
+	
+    publishing {
+        repositories {
+            maven {
                 url = "http://nexus.bertramlabs.com/content/repositories/snapshots"
                 if(project.hasProperty('labsNexusUser')) {
                     credentials {
@@ -123,20 +61,37 @@ publishing {
     }
 }
 
+subprojects { project ->
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+    apply plugin: 'signing'
+    afterEvaluate {
+        signing {
+            required { isReleaseVersion && gradle.taskGraph.hasTask("publish") }
+            sign publishing.publications.maven
+        }
+    }
 
+    tasks.withType(Sign) {
+        onlyIf { isReleaseVersion }
+    }
 
-afterEvaluate {
-    signing {
-        required { isReleaseVersion && gradle.taskGraph.hasTask("publish") }
-        sign publishing.publications.maven
+    //do not generate extra load on Nexus with new staging repository if signing fails
+    tasks.withType(io.github.gradlenexus.publishplugin.InitializeNexusStagingRepository).configureEach {
+        shouldRunAfter(tasks.withType(Sign))
     }
 }
 
-tasks.withType(Sign) {
-    onlyIf { isReleaseVersion }
+dependencies {
+	api 'org.codehaus.groovy:groovy:2.4.19'
+	api 'org.codehaus.groovy:groovy-templates:2.4.19'
+	api 'org.mozilla:rhino:1.7R4'
+	testImplementation 'org.spockframework:spock-core:1.3-groovy-2.4'
 }
 
-//do not generate extra load on Nexus with new staging repository if signing fails
-tasks.withType(io.github.gradlenexus.publishplugin.InitializeNexusStagingRepository).configureEach {
-    shouldRunAfter(tasks.withType(Sign))
+test {
+	testLogging {
+		exceptionFormat = 'full'
+		showStandardStreams = true
+	}
 }

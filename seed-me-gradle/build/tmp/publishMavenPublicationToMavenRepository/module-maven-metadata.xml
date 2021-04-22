@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>com.bertramlabs.plugins</groupId>
+  <artifactId>seed-me-gradle</artifactId>
+  <versioning>
+    <latest>4.1.6-SNAPSHOT</latest>
+    <versions>
+      <version>4.1.6-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20210420151022</lastUpdated>
+  </versioning>
+</metadata>

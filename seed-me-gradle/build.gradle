@@ -1,0 +1,103 @@
+buildscript {
+
+    repositories {
+        mavenLocal()
+        maven { url "https://repo.grails.org/grails/core" }
+    }
+    dependencies {
+        classpath "io.github.gradle-nexus:publish-plugin:1.0.0"
+    }
+}
+group "com.bertramlabs.plugins"
+
+apply plugin:"eclipse"
+apply plugin:"groovy"
+apply plugin:"idea"
+apply plugin:"maven-publish"
+apply plugin:"java-library"
+
+ext {
+  isBuildSnapshot = version.endsWith('-SNAPSHOT')
+  isReleaseVersion = !isBuildSnapshot
+}
+
+repositories {
+    mavenLocal()
+    maven { url "https://repo.grails.org/grails/core" }
+}
+
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+dependencies {
+    implementation gradleApi()
+    
+}
+
+if (isReleaseVersion) {
+    apply plugin: "io.github.gradle-nexus.publish-plugin"
+    nexusPublishing {
+        repositories {
+            sonatype {
+                if(project.hasProperty('mavenUser')) {
+                    username = mavenUser
+                    password = mavenPassword
+                }    
+            }
+        }
+    }
+} 
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifactId 'seed-me-gradle'
+            pom.withXml {
+                asNode().children().last() + {
+                    resolveStrategy = Closure.DELEGATE_FIRST
+                    name 'Seed Me Gradle Plugin'
+                    description 'Implements a standard convention for adding seed data to your Grails application.'
+                    url 'https://github.com/bertramdev/seed-me'
+                    scm {
+                        url 'https://github.com/bertramdev/seed-me'
+                        connection 'scm:https://bertramdev@github.com/bertramdev/seed-me.git'
+                        developerConnection 'scm:git://github.com/bertramdev/seed-me.git'
+                    }
+                    licenses {
+                        license {
+                            name 'The Apache Software License, Version 2.0'
+                            url 'http://www.apache.org/license/LICENSE-2.0.txt'
+                            distribution 'repo'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id 'davydotcom'
+                            name 'David Estes'
+                            email 'davydotcom@gmail.com'
+                        }
+                    }
+                }
+            }
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            if( !isReleaseVersion ) {
+                url = "http://nexus.bertramlabs.com/content/repositories/snapshots"
+                if(project.hasProperty('labsNexusUser')) {
+                    credentials {
+                        username = labsNexusUser
+                        password = labsNexusPassword
+                    }
+                }
+            }
+        }
+    }
+}
+
+
