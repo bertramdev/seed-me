@@ -413,31 +413,13 @@ class SeedService {
 		} else if(value instanceof Map && value._template == true) {
 			//load the content from a file
 			if(seedSet?.seedFile?.file) {
-				if(seedSet?.seedFile?.fileSource == 'classLoader') {
-
-					String[] seedNameArgs = seedSet?.seedFile.name.tokenize('/')
-					def templateFile = "seed/${value.value}"
-					if(seedNameArgs.size() > 1) {
-						templateFile = "seed/" + seedNameArgs[0..-2].join('/') + '/' + value.value
-					}
-					def res = grailsApplication.mainContext.getResource(templateFile)
-					if(!res.exists()) {
-						res = grailsApplication.mainContext.getResource("classpath:" + templateFile)
-					}
-					if(res.exists()) {
-						data[key] = res.inputStream.getText('UTF-8')
-					} else {
-						log.warn("seed value template not found: ${value.value} - templateFile: ${templateFile} - ${seedSet?.seedFile.name.tokenize('/')}")
-					}
+				def parentFile = seedSet.seedFile.file.getParentFile()
+				def templateFile = new File(parentFile, value.value)
+				//println("loading seed template: ${templateFile.getPath()} - ${templateFile.exists()}")
+				if(templateFile.exists()) {
+					data[key] = templateFile.getText()
 				} else {
-					def parentFile = seedSet.seedFile.file.getParentFile()
-					def templateFile = new File(parentFile, value.value)
-					//println("loading seed template: ${templateFile.getPath()} - ${templateFile.exists()}")
-					if(templateFile.exists()) {
-						data[key] = templateFile.getText()
-					} else {
-						log.warn("seed value template not found: ${value.value}")
-					}
+					log.warn("seed value template not found: ${value.value}")
 				}
 			}
 		} else if(value instanceof CharSequence && value.toString().indexOf('$') >= 0) {
@@ -632,22 +614,12 @@ class SeedService {
         def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
         def env = tmpEnvironmentFolder ?: Environment.current.name
 
-        seedList = seedList.findAll{ item -> 
-        	def itemArgs = item.tokenize('/')
-        	return item.startsWith("${env}/") || item.startsWith("env-${env}/") || itemArgs.size() == 1 || (!environmentList.contains(itemArgs[0]) && !item.contains('templates/'))
-        }
+        seedList = seedList.findAll{ item -> item.startsWith("${env}/") || item.indexOf('/') == -1 }
 
         def seedFiles = []
         seedList.each { seedName ->
         	classLoader.getResources("seed/${seedName}")?.eachWithIndex {res, index ->
-        		if(seedName.endsWith('.groovy')) {
-        			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'groovy', fileSource:'classLoader']
-        		} else if(seedName.endsWith('.yaml') || seedName.endsWith('.yml')) {
-        			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'yaml', fileSource:'classLoader']
-        		} else if(seedName.endsWith('.json')) {
-        			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'json', fileSource:'classLoader']	
-        		}
-        		
+        		seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}"]
         	}
         }
         seedFiles = seedFiles.sort{ a,b -> a.name <=> b.name}
@@ -675,7 +647,7 @@ class SeedService {
 							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'groovy']
 						else if(tmpFile.name.endsWith('.json'))
 							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'json']
-						else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
+						else if(tmpFile.name.endsWith('.yaml'))
 							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'yaml']
 					}
 				}
@@ -683,14 +655,13 @@ class SeedService {
 					if(tmpFolder.name == env || (tmpFolder.name == 'env-' + env) || //if the name matches for legacy or env- matches..
 							(!environmentList.contains(tmpFolder.name) && !tmpFolder.name.startsWith('env-'))) { //process sub folders that environment specific
 						tmpFolder.eachFile { tmpFile ->
-							def seedName = "${tmpFolder.name}/${tmpFile.name}"
 							if(!tmpFile.isDirectory() && !isSeedFileExcluded(tmpFile.name)) {
 								if(tmpFile.name.endsWith('.groovy'))
-									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'groovy']
+									seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'groovy']
 								else if(tmpFile.name.endsWith('.json'))
-									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'json']
-								else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
-									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'yaml']
+									seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'json']
+								else if(tmpFile.name.endsWith('.yaml'))
+									seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'yaml']
 							}
 						}
 					}
