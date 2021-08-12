@@ -1,1 +1,1 @@
-include 'seed-me','seed-me-gradle'
+include 'seed-me', 'seed-me-gradle'
