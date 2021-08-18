@@ -60,46 +60,46 @@ class SeedService {
 	}
 
 	//triggers processing of specified target seed file included inside the application
-  void installSeedData(String target) {
-    log.info("seedService.installSeedData: " + target)
-    def requestedSets = [:]
-    def seedFiles = getSeedFiles()
-    def startTime = new Date().time
-    def (seedSets, seedSetByPlugin, seedSetsByName) = buildSeedSets(seedFiles)
-    //if a name - filter it out
-    if(target.contains('.')) {
-      def plugin = target.substring(0, target.indexOf('.'))
-      String seedName = target.substring(plugin.length() + 1)
-      plugin = plugin.replaceAll(/\B[A-Z]/) { '-' + it }.toLowerCase()
-      String seedAddress = plugin + "." + seedName
-      requestedSets."$seedAddress" = seedSets."$seedAddress"
-    } else { // in case of ambiguity find all seeds with matching target
-      def sets = seedSetsByName[target]
-      requestedSets = sets.collect { "${it.plugin}.${it.name}" }
-    }
-    def seedSetsToRun = requestedSets + [:]
-    requestedSets.each { setName, set ->
-      seedSetProcess(set, seedSetsToRun, seedSetByPlugin, seedSetsByName)
-    }
-    log.info("installSeedData completed in {}ms", new Date().time - startTime)
-  }
-
-  //triggers processing of already loaded files - for external app managing where to load from
-  void installSeedData(Collection seedFiles) {
-		log.info("seedService.installSeedData")
-		log.info("seedService - processing ${seedFiles?.size()} files")
+	void installSeedData(String target) {
+		log.info("seedService.installSeedData: " + target)
+		def requestedSets = [:]
+		def seedFiles = getSeedFiles()
 		def startTime = new Date().time
 		def (seedSets, seedSetByPlugin, seedSetsByName) = buildSeedSets(seedFiles)
-		// make a copy so we can remove items from one list as they are processed, another to
-		// iterate through
-		def seedSetsToRun = seedSets.clone()
-		seedSets.each { name, set ->
+		//if a name - filter it out
+		if(target.contains('.')) {
+			def plugin = target.substring(0, target.indexOf('.'))
+			String seedName = target.substring(plugin.length() + 1)
+			plugin = plugin.replaceAll(/\B[A-Z]/) { '-' + it }.toLowerCase()
+			String seedAddress = plugin + "." + seedName
+			requestedSets."$seedAddress" = seedSets."$seedAddress"
+		} else { // in case of ambiguity find all seeds with matching target
+			def sets = seedSetsByName[target]
+			requestedSets = sets.collect { "${it.plugin}.${it.name}" }
+		}
+		def seedSetsToRun = requestedSets + [:]
+		requestedSets.each { setName, set ->
 			seedSetProcess(set, seedSetsToRun, seedSetByPlugin, seedSetsByName)
 		}
 		log.info("installSeedData completed in {}ms", new Date().time - startTime)
 	}
 
-  /**
+	//triggers processing of already loaded files - for external app managing where to load from
+	void installSeedData(Collection seedFiles, Collection seedTemplates, Map opts) {
+		log.info("seedService.installSeedData")
+		log.info("seedService - processing ${seedFiles?.size()} files")
+		def startTime = new Date().time
+		def (seedSets, seedSetByPlugin, seedSetsByName) = buildSeedSets(seedFiles, opts)
+		// make a copy so we can remove items from one list as they are processed, another to
+		// iterate through
+		def seedSetsToRun = seedSets.clone()
+		seedSets.each { name, set ->
+			seedSetProcess(set, seedSetsToRun, seedSetByPlugin, seedSetsByName, seedTemplates)
+		}
+		log.info("installSeedData completed in {}ms", new Date().time - startTime)
+	}
+
+	/**
 	* Allows creating seed by passing in a string of content
 	* @param String seedContent - seed file contents as a string
 	*/
@@ -150,19 +150,27 @@ class SeedService {
 	}
 
 	private buildSeedSets(seedFiles) {
+		return buildSeedSets(seedFiles, [:])
+	}
+
+	private buildSeedSets(seedFiles, Map opts) {
 		def seedSets = [:], byPlugin = [:], byName = [:]
 		def filesChanged = false
-		//check for changes
-		for(row in seedFiles) {
-			def tmpFile = row.file
-			def tmpSeedName = getSeedSetName(row.name)
-			def pluginName = row.plugin ?: 'application'
-			def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
-			def checksum = row.checksum ?: (tmpFile ? getMD5FromStream(tmpFile.newInputStream()) : (row.content ? getMD5FromContent(row.content) : null))
-			if(checkChecksum(tmpSetKey).checksum != checksum) {
-				filesChanged = true
-				//have a change - break to process
-				break
+		if(opts?.force == true) {
+			filesChanged = true
+		} else {
+			//check for changes
+			for(row in seedFiles) {
+				def tmpFile = row.file
+				def tmpSeedName = getSeedSetName(row.name)
+				def pluginName = row.plugin ?: 'application'
+				def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
+				def checksum = row.checksum ?: (tmpFile ? getMD5FromStream(tmpFile.newInputStream()) : (row.content ? getMD5FromContent(row.content) : null))
+				if(checkChecksum(tmpSetKey).checksum != checksum) {
+					filesChanged = true
+					//have a change - break to process
+					break
+				}
 			}
 		}
 		//if changes do the processing
@@ -171,7 +179,7 @@ class SeedService {
 				//change to call below method
 				def tmpFile = row.file
 				def pluginName = row.plugin ?: 'application'
-				def tmpContent = row.content ?: tmpFile.getText()
+				def tmpContent = row.content ?: tmpFile?.getText()
 				def tmpType = row.type
 				def tmpSeedName = getSeedSetName(row.name)
 				byPlugin[pluginName] = byPlugin[pluginName] ?: [:]
@@ -296,7 +304,7 @@ class SeedService {
 		return rtn
 	}
 
-	def processSeedItem(seedSet, seedItem) {
+	def processSeedItem(seedSet, seedItem, templates) {
 		def tmpDomain = lookupDomain(seedItem.domainClass)
 		def tmpMeta = seedItem.meta
 		if(tmpDomain && tmpMeta.key) {
@@ -309,39 +317,39 @@ class SeedService {
 						def subDomain = tmpProp.associatedEntity
 						if(tmpProp instanceof OneToMany) {
 							if(value instanceof Map) {
-								setSeedValue(seedSet, saveData, key, value, subDomain)
+								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
 							} else if(value instanceof List) {
-								setSeedValue(seedSet, saveData, key, value, subDomain)
+								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
 							}
 						} else if((tmpProp instanceof ToOne) || (tmpProp instanceof OneToOne )) {
 							if(value instanceof Map) {
-								setSeedValue(seedSet, saveData, key, value, subDomain)
+								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
 							}
 						} else if(tmpProp instanceof ManyToMany) {
 							if(value instanceof Map) {
-								setSeedValue(seedSet, saveData, key, value, subDomain)
+								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
 							} else if(value instanceof List) {
-								setSeedValue(seedSet, saveData, key, value, subDomain)
+								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
 							}
 						} else if(tmpProp instanceof ManyToOne) {
 							if(value instanceof Map) {
-								setSeedValue(seedSet, saveData, key, value, subDomain)
+								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
 							}
 						} else if(tmpProp instanceof Basic) {
-							setSeedValue(seedSet, saveData, key, value, subDomain)
+							setSeedValue(seedSet, saveData, key, value, templates, subDomain)
 						} else {
 							log.warn "Association is not handled thus this object may not be seeded: ${tmpProp.getName()} type: ${tmpProp.getType()?.getName()}"
 						}
 					}
 					// if domain class property type is an enum, transform value into the appropriate enum type
 					else if (tmpProp.type.isEnum() && value instanceof String) {
-						setSeedValue(seedSet, saveData, key, Enum.valueOf(tmpProp.type, value))
+						setSeedValue(seedSet, saveData, key, Enum.valueOf(tmpProp.type, value), templates)
 					}
 					else {
-						setSeedValue(seedSet, saveData, key, value)
+						setSeedValue(seedSet, saveData, key, value, templates)
 					}
 				} else {
-					setSeedValue(seedSet, saveData, key, value)
+					setSeedValue(seedSet, saveData, key, value, templates)
 				}
 			}
 			def opts = [:]
@@ -352,7 +360,15 @@ class SeedService {
 		}
 	}
 
-	def setSeedValue(seedSet, data, key, value, domain = null) {
+	def setSeedValue(Map seedSet, Map data, String key, Object value) {
+		setSeedValue(seedSet, data, key, value, [], null)
+	}
+
+	def setSeedValue(Map seedSet, Map data, String key, Object value, Collection templates) {
+		setSeedValue(seedSet, data, key, value, templates, null)
+	}
+
+	def setSeedValue(Map seedSet, Map data, String key, Object value, Collection templates, Object domain) {
 		def tmpCriteria = [:]
 		if(domain) {
 			if(value instanceof Map) {
@@ -364,7 +380,7 @@ class SeedService {
 				if(tmpObj) {
 					data[key] = tmpObj
 				} else {
-					log.warn("Seed: Unable to locate domain Object ${domain} with criteria ${value}");
+					log.warn("Seed: Unable to locate domain Object ${domain} with criteria ${value}")
 				}
 			} else if(value instanceof List) {
 				data[key] = value.collect {
@@ -372,15 +388,15 @@ class SeedService {
 					tmpCriteria = it
 					if(tmpSeedMeta && tmpSeedMeta['criteria']==true) {
 						it.each{ k, val  ->
-							setSeedValue(seedSet, tmpCriteria,k,val)
+							setSeedValue(seedSet, tmpCriteria, k, val, templates)
 						}
 					}
 					def tmpObj = findSeedObject(domain, tmpCriteria)
 					if(!tmpObj) {
-						log.warn("Seed: Unable to locate domain Object ${domain} with criteria ${tmpCriteria}");
+						log.warn("Seed: Unable to locate domain Object ${domain} with criteria ${tmpCriteria}")
 					} 
 					return tmpObj
-				}.findAll{it!=null}
+				}.findAll{ it!=null }
 			}
 		//} else if (value instanceof Map && value[getMetaKey()]) {
 		} else if(value instanceof Map && value.containsKey('domainClass')) {
@@ -389,7 +405,7 @@ class SeedService {
 			def tmpObjectMeta = value.remove(getMetaKey())
 			if(tmpObjectMeta && tmpObjectMeta['criteria']==true) {
 				value.each{ k , val ->
-					setSeedValue(seedSet, tmpCriteria,k,val)
+					setSeedValue(seedSet, tmpCriteria, k, val, templates)
 				}
 				value = tmpCriteria
 			}
@@ -411,32 +427,39 @@ class SeedService {
 		} else if(value instanceof Map && value._literal == true) {
 			data[key] = value.value
 		} else if(value instanceof Map && value._template == true) {
-			//load the content from a file
-			if(seedSet?.seedFile?.file) {
-				if(seedSet?.seedFile?.fileSource == 'classLoader') {
-
-					String[] seedNameArgs = seedSet?.seedFile.name.tokenize('/')
-					def templateFile = "seed/${value.value}"
-					if(seedNameArgs.size() > 1) {
-						templateFile = "seed/" + seedNameArgs[0..-2].join('/') + '/' + value.value
-					}
-					def res = grailsApplication.mainContext.getResource(templateFile)
-					if(!res.exists()) {
-						res = grailsApplication.mainContext.getResource("classpath:" + templateFile)
-					}
-					if(res.exists()) {
-						data[key] = res.inputStream.getText('UTF-8')
+			//check the template map
+			def templateMatch = templates?.find{ it.name == value.value }
+			if(templateMatch) {
+				//todo - support loading from a file
+				data[key] = templateMatch.content
+			} else {
+				//load the content from a file
+				if(seedSet?.seedFile?.file) {
+					if(seedSet?.seedFile?.fileSource == 'classLoader') {
+						//for templates built in
+						String[] seedNameArgs = seedSet?.seedFile.name.tokenize('/')
+						def templateFile = "seed/${value.value}"
+						if(seedNameArgs.size() > 1) {
+							templateFile = "seed/" + seedNameArgs[0..-2].join('/') + '/' + value.value
+						}
+						def res = grailsApplication.mainContext.getResource(templateFile)
+						if(!res.exists()) {
+							res = grailsApplication.mainContext.getResource("classpath:" + templateFile)
+						}
+						if(res.exists()) {
+							data[key] = res.inputStream.getText('UTF-8')
+						} else {
+							log.warn("seed value template not found: ${value.value} - templateFile: ${templateFile} - ${seedSet?.seedFile.name.tokenize('/')}")
+						}
 					} else {
-						log.warn("seed value template not found: ${value.value} - templateFile: ${templateFile} - ${seedSet?.seedFile.name.tokenize('/')}")
-					}
-				} else {
-					def parentFile = seedSet.seedFile.file.getParentFile()
-					def templateFile = new File(parentFile, value.value)
-					//println("loading seed template: ${templateFile.getPath()} - ${templateFile.exists()}")
-					if(templateFile.exists()) {
-						data[key] = templateFile.getText()
-					} else {
-						log.warn("seed value template not found: ${value.value}")
+						def parentFile = seedSet.seedFile.file.getParentFile()
+						def templateFile = new File(parentFile, value.value)
+						//println("loading seed template: ${templateFile.getPath()} - ${templateFile.exists()}")
+						if(templateFile.exists()) {
+							data[key] = templateFile.getText()
+						} else {
+							log.warn("seed value template not found: ${value.value}")
+						}
 					}
 				}
 			}
@@ -521,7 +544,7 @@ class SeedService {
 							if(tmpObj.errors.hasErrors()) {
 								errors = tmpObj.errors.allErrors.collect {err->
 									" - " + messageSource.getMessage(err,Locale.ENGLISH) // need to get real local
-						        }
+										}
 							}
 							log.error("Seed Error Saving ${tmpObj.toString()}\n${errors.join("\n")}")
 						}
@@ -538,7 +561,7 @@ class SeedService {
 					if(tmpObj.errors.hasErrors()) {
 						errors = tmpObj.errors.allErrors.collect {err->
 							" - " + messageSource.getMessage(err,Locale.ENGLISH) // need to get real local
-				        }
+								}
 					}
 					log.error("Seed Error Inserting ${tmpObj.toString()}\n${errors.join("\n")}")
 				}
@@ -570,7 +593,7 @@ class SeedService {
 		def rtn = str
 		def tmpIndex = rtn?.lastIndexOf('.')
 		if(tmpIndex > -1)
-		  rtn = rtn.substring(0, tmpIndex)
+			rtn = rtn.substring(0, tmpIndex)
 		return rtn
 	}
 
@@ -613,10 +636,8 @@ class SeedService {
 					}	
 				} catch(exc) {
 					//binary plugins wont work in grails 3 with current design
-				}
-                
-            }
-			
+				}						
+			}
 			seedPaths.application = seedRoot
 		}
 		return seedPaths
@@ -626,32 +647,32 @@ class SeedService {
 		ClassLoader classLoader = Thread.currentThread().contextClassLoader
 		def resources = classLoader.getResources('seeds.list')
 		def seedList = []
-        resources.each { URL res ->
-            seedList += res?.text?.tokenize("\n") ?: []
-        }
-        def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
-        def env = tmpEnvironmentFolder ?: Environment.current.name
-
-        seedList = seedList.findAll{ item -> 
-        	def itemArgs = item.tokenize('/')
-        	return item.startsWith("${env}/") || item.startsWith("env-${env}/") || itemArgs.size() == 1 || (!environmentList.contains(itemArgs[0]) && !item.contains('templates/'))
-        }
-
-        def seedFiles = []
-        seedList.each { seedName ->
-        	classLoader.getResources("seed/${seedName}")?.eachWithIndex {res, index ->
-        		if(seedName.endsWith('.groovy')) {
-        			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'groovy', fileSource:'classLoader']
-        		} else if(seedName.endsWith('.yaml') || seedName.endsWith('.yml')) {
-        			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'yaml', fileSource:'classLoader']
-        		} else if(seedName.endsWith('.json')) {
-        			seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'json', fileSource:'classLoader']	
-        		}
-        		
-        	}
-        }
-        seedFiles = seedFiles.sort{ a,b -> a.name <=> b.name}
-        return seedFiles
+		resources.each { URL res ->
+				seedList += res?.text?.tokenize("\n") ?: []
+		}
+		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
+		def env = tmpEnvironmentFolder ?: Environment.current.name
+		//get environment matches
+		seedList = seedList.findAll{ item -> 
+			def itemArgs = item.tokenize('/')
+			return item.startsWith("${env}/") || item.startsWith("env-${env}/") || itemArgs.size() == 1 || (!environmentList.contains(itemArgs[0]) && !item.contains('templates/'))
+		}
+		//build the list
+		def seedFiles = []
+		seedList.each { seedName ->
+			classLoader.getResources("seed/${seedName}")?.eachWithIndex {res, index ->
+				if(seedName.endsWith('.groovy')) {
+					seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'groovy', fileSource:'classLoader']
+				} else if(seedName.endsWith('.yaml') || seedName.endsWith('.yml')) {
+					seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'yaml', fileSource:'classLoader']
+				} else if(seedName.endsWith('.json')) {
+					seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'json', fileSource:'classLoader']	
+				}
+				
+			}
+		}
+		seedFiles = seedFiles.sort{ a,b -> a.name <=> b.name}
+		return seedFiles
 	}
 
 	def getSeedFiles() {
@@ -715,7 +736,15 @@ class SeedService {
 	 * @param seedOrder an array built as the process runs.  Contains the
 	 * order in which the seed files were processed.
 	 */
-	private seedSetProcess(set, seedSetsLeft, seedSetsByPlugin, seedSetsByName, seedOrder=[]) {
+	private seedSetProcess(Map set, Map seedSetsLeft, Map seedSetsByPlugin, Map seedSetsByName) {
+		seedSetProcess(set, seedSetsLeft, seedSetsByPlugin, seedSetsByName, [], [])
+	}
+
+	private seedSetProcess(Map set, Map seedSetsLeft, Map seedSetsByPlugin, Map seedSetsByName, Collection templates) {
+		seedSetProcess(set, seedSetsLeft, seedSetsByPlugin, seedSetsByName, templates, [])
+	}
+
+	private seedSetProcess(Map set, Map seedSetsLeft, Map seedSetsByPlugin, Map seedSetsByName, Collection templates, Collection seedOrder) {
 		if(!set) return
 		def setKey = buildSeedSetKey(set.name, set.plugin)
 		// if this set has dependencies, process them first
@@ -734,21 +763,20 @@ class SeedService {
 				if(!deps) {
 					log.warn("Cannot Resolve Dependency (${depSeed})")
 				}
-				deps.each {dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByPlugin, seedSetsByName, seedOrder)}
+				deps.each { dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByPlugin, seedSetsByName, templates, seedOrder) }
 			}
 		}
 		if(!set.checksumMatched) {
-			// if this seed set is in the list, run it
+			//if this seed set is in the list, run it
 			def seedCheck = checkChecksum(setKey)
-			if(seedSetsLeft[setKey] && 
-				 (seedCheck?.checksum != set.checksum)) {
-				log.info "Processing $setKey"
+			if(seedSetsLeft[setKey] && (seedCheck?.checksum != set.checksum)) {
+				log.info("Processing $setKey")
 				def seedTask = task {
 					SeedMeChecksum.withNewSession { session ->
 						SeedMeChecksum.withTransaction {
 							try {
 								set.seedList.each { seedItem ->
-									processSeedItem(set, seedItem)
+									processSeedItem(set, seedItem, templates)
 								}
 								updateChecksum(seedCheck?.id, set.checksum, setKey)
 								seedSetsLeft[setKey] = null
