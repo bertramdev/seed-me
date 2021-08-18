@@ -8,7 +8,6 @@ buildscript {
     }
     dependencies {
         classpath "org.grails:grails-gradle-plugin:$grailsVersion"
-        classpath "io.github.gradle-nexus:publish-plugin:1.0.0"
     }
 }
 group "com.bertramlabs.plugins"
@@ -57,19 +56,6 @@ dependencies {
     testCompile "org.grails:grails-web-testing-support"
 }
 
-if (isReleaseVersion) {
-    apply plugin: "io.github.gradle-nexus.publish-plugin"
-    nexusPublishing {
-        repositories {
-            sonatype {
-                if(project.hasProperty('mavenUser')) {
-                    username = mavenUser
-                    password = mavenPassword
-                }    
-            }
-        }
-    }
-} 
 
 publishing {
     publications {
