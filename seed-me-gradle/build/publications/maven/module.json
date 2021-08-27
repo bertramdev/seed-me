@@ -3,15 +3,15 @@
   "component": {
     "group": "com.bertramlabs.plugins",
     "module": "seed-me-gradle",
-    "version": "4.2.0",
+    "version": "4.2.1-SNAPSHOT",
     "attributes": {
-      "org.gradle.status": "release"
+      "org.gradle.status": "integration"
     }
   },
   "createdBy": {
     "gradle": {
       "version": "6.8.3",
-      "buildId": "z34evynyabhwjn2lqeu5p7txdy"
+      "buildId": "u6ymvs2t5jc75hcf4gszy3sa4u"
     }
   },
   "variants": [
@@ -26,13 +26,13 @@
       },
       "files": [
         {
-          "name": "seed-me-gradle-4.2.0.jar",
-          "url": "seed-me-gradle-4.2.0.jar",
+          "name": "seed-me-gradle-4.2.1-SNAPSHOT.jar",
+          "url": "seed-me-gradle-4.2.1-SNAPSHOT.jar",
           "size": 15051,
-          "sha512": "1f2e221d30e9af2ae0a2bee66b7de02f4904b3d31c8c16bf8b89fff42ed4657a343a149b1db0e23fa522a73c7bdf78da5edc3a4ec536373873f641eb6a5de68b",
-          "sha256": "437b5a3c81102dac095948ae7739a2548a62b559b7397b7f83a01a25e7679c88",
-          "sha1": "6b672917960538251174cd6214b5cc598743b9f5",
-          "md5": "24f0dbfb6a19c51bfd3d80de971f4b3d"
+          "sha512": "3b703136326fcb171125da0282d47b96b11350289ed53c0019046bd3ce263c8f68eb94fa73eb1acb304bff3a2fc9133d9ac1b8a52319b7ccb42bfd04941147b1",
+          "sha256": "f2b4c14d3982364f267972b25f241755df64722599b4301515f8ce7dfef12ee5",
+          "sha1": "e08c61f55fde5027178336fcd4a2bb502a8cbf11",
+          "md5": "1ac03cad64b33e61df87183d6b2954ce"
         }
       ]
     },
@@ -47,13 +47,13 @@
       },
       "files": [
         {
-          "name": "seed-me-gradle-4.2.0.jar",
-          "url": "seed-me-gradle-4.2.0.jar",
+          "name": "seed-me-gradle-4.2.1-SNAPSHOT.jar",
+          "url": "seed-me-gradle-4.2.1-SNAPSHOT.jar",
           "size": 15051,
-          "sha512": "1f2e221d30e9af2ae0a2bee66b7de02f4904b3d31c8c16bf8b89fff42ed4657a343a149b1db0e23fa522a73c7bdf78da5edc3a4ec536373873f641eb6a5de68b",
-          "sha256": "437b5a3c81102dac095948ae7739a2548a62b559b7397b7f83a01a25e7679c88",
-          "sha1": "6b672917960538251174cd6214b5cc598743b9f5",
-          "md5": "24f0dbfb6a19c51bfd3d80de971f4b3d"
+          "sha512": "3b703136326fcb171125da0282d47b96b11350289ed53c0019046bd3ce263c8f68eb94fa73eb1acb304bff3a2fc9133d9ac1b8a52319b7ccb42bfd04941147b1",
+          "sha256": "f2b4c14d3982364f267972b25f241755df64722599b4301515f8ce7dfef12ee5",
+          "sha1": "e08c61f55fde5027178336fcd4a2bb502a8cbf11",
+          "md5": "1ac03cad64b33e61df87183d6b2954ce"
         }
       ]
     },
@@ -67,13 +67,13 @@
       },
       "files": [
         {
-          "name": "seed-me-gradle-4.2.0-sources.jar",
-          "url": "seed-me-gradle-4.2.0-sources.jar",
+          "name": "seed-me-gradle-4.2.1-SNAPSHOT-sources.jar",
+          "url": "seed-me-gradle-4.2.1-SNAPSHOT-sources.jar",
           "size": 3755,
-          "sha512": "638310f6624533ee17081615f23005f72978263622ba5884e5a523a7e21c8f48573310a14287e7c9e2c46e60693b178b5fc775bdfe5af4b411f1664adac22d6f",
-          "sha256": "fb9de1cce07f86b356a430467f7b8ae72b0bed38ff82b7948ad671c0e5579b90",
-          "sha1": "fc672d69f0a324498d45ee3d29b17826ba876ca5",
-          "md5": "3a18a80cd73b268a253fd69c001281cd"
+          "sha512": "9cf4b25c44b238ca36949dec717d305bdb2055a4278861d8cda11f00f2282642ba6aca8943a75d335b2c99416e9dbd827faf1f74e92b58af91c9bb063f207df3",
+          "sha256": "3a7bdb4a10b443728faf979a090925aa35fda0f274f0dcf93f444f22f187a029",
+          "sha1": "564124d47515d060c6950b7f33e97d5effec4dc6",
+          "md5": "b33e0809f4226fccfd50ca3d5b786160"
         }
       ]
     },
@@ -87,13 +87,13 @@
       },
       "files": [
         {
-          "name": "seed-me-gradle-4.2.0-javadoc.jar",
-          "url": "seed-me-gradle-4.2.0-javadoc.jar",
+          "name": "seed-me-gradle-4.2.1-SNAPSHOT-javadoc.jar",
+          "url": "seed-me-gradle-4.2.1-SNAPSHOT-javadoc.jar",
           "size": 261,
-          "sha512": "e1cabd0731a141997cdb2d95a14fc43434a2badfdfce7ac97df64e4d59c3f4e5e48950933d582fe0669045ff05c95f9f8dfe55bb83e70f9b3428e133541b81bb",
-          "sha256": "504907787eb5673c485f648c785d42bde20735a525f82534129fdbffc0afedd4",
-          "sha1": "5ccdca29a01e6312da65d02f4b57821697a7e27b",
-          "md5": "1f8ab217f70e3d55fe06749e0dd532b9"
+          "sha512": "fd9ecebec907acad77b4fa44d1f1a95a6f878e09f2c8758368cf36b9c8d990d300f52ae53c044b2d9a3fb63234d9a4f431b1daafbf4bcd447f032fc60bf04ef4",
+          "sha256": "c6abd6d01445c2e0427c2b4c31b82da31e24a1abea26bee87255242db1b133a8",
+          "sha1": "c4f27fc10f5031a125fcb2d1e847dd2c9448023e",
+          "md5": "ce1162b794dcb80f8308e97908bce89d"
         }
       ]
     }

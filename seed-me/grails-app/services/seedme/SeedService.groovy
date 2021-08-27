@@ -5,6 +5,7 @@ import groovy.text.GStringTemplateEngine
 
 import java.security.MessageDigest
 import java.security.DigestInputStream
+import java.util.zip.*
 import javax.xml.bind.DatatypeConverter
 
 import org.grails.datastore.mapping.model.PersistentEntity
@@ -42,46 +43,21 @@ class SeedService {
 	private checkSums = new ThreadLocal()
 
 	static environmentList = ['dev', 'test', 'prod']
-
+	static morpheusPackageExtensions = ['morpkg', 'mpkg', 'mopkg']
+	static packageManifestName = 'package-manifest.json'
+	
 	//triggers processing of seed files included inside the application
 	void installSeedData() {
-		log.info("seedService.installSeedData")
-		def seedFiles = getSeedFiles()
-		log.info("seedService - processing ${seedFiles?.size()} files")
-		def startTime = new Date().time
-		def (seedSets, seedSetByPlugin, seedSetsByName) = buildSeedSets(seedFiles)
-		// make a copy so we can remove items from one list as they are processed, another to
-		// iterate through
-		def seedSetsToRun = seedSets.clone()
-		seedSets.each { name, set ->
-			seedSetProcess(set, seedSetsToRun, seedSetByPlugin, seedSetsByName)
-		}
-		log.info("installSeedData completed in {}ms", new Date().time - startTime)
+		def (seedFiles, seedTemplates) = getSeedFiles()
+		def seedOpts = [:]
+		installSeedData(seedFiles, seedTemplates, seedOpts)
 	}
 
 	//triggers processing of specified target seed file included inside the application
 	void installSeedData(String target) {
-		log.info("seedService.installSeedData: " + target)
-		def requestedSets = [:]
-		def seedFiles = getSeedFiles()
-		def startTime = new Date().time
-		def (seedSets, seedSetByPlugin, seedSetsByName) = buildSeedSets(seedFiles)
-		//if a name - filter it out
-		if(target.contains('.')) {
-			def plugin = target.substring(0, target.indexOf('.'))
-			String seedName = target.substring(plugin.length() + 1)
-			plugin = plugin.replaceAll(/\B[A-Z]/) { '-' + it }.toLowerCase()
-			String seedAddress = plugin + "." + seedName
-			requestedSets."$seedAddress" = seedSets."$seedAddress"
-		} else { // in case of ambiguity find all seeds with matching target
-			def sets = seedSetsByName[target]
-			requestedSets = sets.collect { "${it.plugin}.${it.name}" }
-		}
-		def seedSetsToRun = requestedSets + [:]
-		requestedSets.each { setName, set ->
-			seedSetProcess(set, seedSetsToRun, seedSetByPlugin, seedSetsByName)
-		}
-		log.info("installSeedData completed in {}ms", new Date().time - startTime)
+		def (seedFiles, seedTemplates) = getSeedFiles()
+		def seedOpts = [target:target]
+		installSeedData(seedFiles, seedTemplates, seedOpts)
 	}
 
 	//triggers processing of already loaded files - for external app managing where to load from
@@ -90,11 +66,33 @@ class SeedService {
 		log.info("seedService - processing ${seedFiles?.size()} files")
 		def startTime = new Date().time
 		def (seedSets, seedSetByPlugin, seedSetsByName) = buildSeedSets(seedFiles, opts)
-		// make a copy so we can remove items from one list as they are processed, another to
-		// iterate through
-		def seedSetsToRun = seedSets.clone()
-		seedSets.each { name, set ->
-			seedSetProcess(set, seedSetsToRun, seedSetByPlugin, seedSetsByName, seedTemplates)
+		//setup run list
+		def seedRunSets
+		// make a copy so we can remove items from one list as they are processed, another to iterate through
+		def seedRunningSets
+		if(opts.target) {
+			seedRunSets = [:]
+			def seedTarget = opts.target
+			if(seedTarget.contains('.')) {
+				def plugin = seedTarget.substring(0, seedTarget.indexOf('.'))
+				String seedName = seedTarget.substring(plugin.length() + 1)
+				plugin = plugin.replaceAll(/\B[A-Z]/) { '-' + it }.toLowerCase()
+				String seedAddress = plugin + '.' + seedName
+				seedRunSets."$seedAddress" = seedSets."$seedAddress"
+				seedRunningSets = seedRunSets.clone()
+			} else { // in case of ambiguity find all seeds with matching target
+				def sets = seedSetsByName[seedTarget]
+				sets.each { name, set ->
+					seedRunSets["${set.plugin}.${set.name}"] = set
+				}
+				seedRunningSets = seedRunSets.clone()
+			}
+		} else {
+			seedRunSets = seedSets
+			seedRunningSets = seedRunSets.clone()
+		}
+		seedRunSets.each { name, set ->
+			seedSetProcess(set, seedRunningSets, seedSetByPlugin, seedSetsByName, seedTemplates)
 		}
 		log.info("installSeedData completed in {}ms", new Date().time - startTime)
 	}
@@ -105,13 +103,13 @@ class SeedService {
 	*/
 	def installExternalSeed(seedContent) {
 		try {
-			def tmpSet = buildSeedSet('external', seedContent)
+			def tmpSet = buildSeedSet('external', seedContent, 'external', 'groovy', false)
 			log.info("processing external seed")
 			tmpSet.seedList?.each { tmpSeed ->
 				try {
 					processSeedItem(tmpSet, tmpSeed)
 				} catch(e) {
-					log.error("error processing seed item ${tmpSeed}",e)
+					log.error("error processing seed item ${tmpSeed}", e)
 					throw e
 				}
 			}
@@ -128,17 +126,18 @@ class SeedService {
 	*/
 	def installSeed(seedData) {
 		try {
-			def tmpSet = [seedList:[], dependsOn:[], name:'name', plugin:null]
+			def tmpSet = [seedList:[], dependsOn:[], name:'name', plugin:null, seedVersion:null]
 			def tmpBuilder = new SeedBuilder()
 			tmpBuilder.seed(seedData)
 			tmpSet.dependsOn = tmpBuilder.dependsOn
+			tmpSet.seedVersion = tmpBuilder.seedVersion
 			tmpSet.seedList.addAll(tmpBuilder.seedList)
 			log.info("processing inline seed")
 			tmpSet.seedList?.each { tmpSeed ->
 				try {
 					processSeedItem(tmpSet, tmpSeed)
 				} catch(e) {
-					log.error("error processing seed item ${tmpSeed}",e)
+					log.error("error processing seed item ${tmpSeed}", e)
 					throw e
 				}
 			}
@@ -154,7 +153,9 @@ class SeedService {
 	}
 
 	private buildSeedSets(seedFiles, Map opts) {
-		def seedSets = [:], byPlugin = [:], byName = [:]
+		def seedSets = [:]
+		def byPlugin = [:]
+		def byName = [:]
 		def filesChanged = false
 		if(opts?.force == true) {
 			filesChanged = true
@@ -186,21 +187,17 @@ class SeedService {
 				byName[tmpSeedName] = byName[tmpSeedName] ?: []
 				def tmpSetKey = buildSeedSetKey(tmpSeedName, pluginName)
 				def checksum = row.checksum ?: (tmpFile ? getMD5FromStream(tmpFile.newInputStream()) : (row.content ? getMD5FromContent(row.content) : null))
-				def tmpSeedSet
-				if(checkChecksum(tmpSetKey).checksum != checksum) {
-					tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName, tmpType)	
-				} else {
-					tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName, tmpType, true)	
-					// tmpSeedSet = [seedList: [], dependsOn: [], name: tmpSeedName, plugin: pluginName, checksum: checksum]
-				}
+				def seedCheck = checkChecksum(tmpSetKey)
+				def checksumMatched = (opts.force != true && seedCheck.checksum == checksum)
+				def tmpSeedSet = buildSeedSet(tmpSeedName, tmpContent, pluginName, tmpType, checksumMatched)
 				tmpSeedSet.seedFile = row
+				tmpSeedSet.seedCheckId = seedCheck.id
 				seedSets[tmpSetKey] = tmpSeedSet
 				byPlugin[pluginName][tmpSetKey] = tmpSeedSet
 				byName[tmpSeedName] << tmpSeedSet	
 			}
-		} else {
-			return [[],[:],[:]]
 		}
+		//done - return all sets
 		return [seedSets, byPlugin, byName]
 	}
 
@@ -241,8 +238,12 @@ class SeedService {
 		return rtn
 	}
 
-	private buildSeedSet(name, seedContent, plugin = null, type = 'groovy', Boolean checksumMatched = false) {
-		def rtn = [seedList:[], dependsOn:[], name:name, plugin:plugin]
+	private buildSeedSet(name, seedContent) {
+		return buildSeedSet(name, seedContent, null, 'groovy', false)
+	}
+
+	private buildSeedSet(name, seedContent, plugin, type, Boolean checksumMatched) {
+		def rtn = [seedList:[], dependsOn:[], name:name, plugin:plugin, seedVersion:null]
 		try {
 			//common 
 			rtn.checksum = MessageDigest.getInstance('MD5').digest(seedContent.bytes).encodeHex().toString()
@@ -256,7 +257,7 @@ class SeedService {
 					def tmpBuilder = new SeedBuilder()
 					tmpBuilder.seed(tmpBinding.getVariable('seed'))
 					rtn.dependsOn = tmpBuilder.dependsOn
-					rtn.checksumMatched = checksumMatched
+					rtn.seedVersion = tmpBuilder.seedVersion
 					rtn.seedList.addAll(tmpBuilder.seedList)
 				}
 			} else if(type == 'json') {
@@ -264,6 +265,7 @@ class SeedService {
 					//parse it - expected format: { dependsOn:[], seed:{domainClass:[]}}
 					def parsedSeed = seedContent ? new groovy.json.JsonSlurper().parseText(seedContent) : [:]
 					rtn.dependsOn = parsedSeed?.dependsOn ?: []
+					rtn.seedVersion = parsedSeed.seedVersion
 					//iterate the seed
 					parsedSeed?.seed?.each { key, value ->
 						//key is a domain - value is an array
@@ -283,6 +285,7 @@ class SeedService {
 					//parse it - expected format: { dependsOn:[], seed:{domainClass:[]}}
 					def parsedSeed = seedContent ? new org.yaml.snakeyaml.Yaml().load(seedContent) : [:]
 					rtn.dependsOn = parsedSeed?.dependsOn ?: []
+					rtn.seedVersion = parsedSeed.seedVersion
 					//iterate the seed
 					parsedSeed?.seed?.each { key, value ->
 						//key is a domain - value is an array
@@ -299,7 +302,7 @@ class SeedService {
 				}
 			} //TODO - add yaml!
 		} catch(e) {
-			log.error("error building seed set ${name}",e)
+			log.error("error building seed set ${name}", e)
 		}
 		return rtn
 	}
@@ -643,43 +646,12 @@ class SeedService {
 		return seedPaths
 	}
 
-	def getClassPathSeedFiles() {
-		ClassLoader classLoader = Thread.currentThread().contextClassLoader
-		def resources = classLoader.getResources('seeds.list')
-		def seedList = []
-		resources.each { URL res ->
-				seedList += res?.text?.tokenize("\n") ?: []
-		}
-		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
-		def env = tmpEnvironmentFolder ?: Environment.current.name
-		//get environment matches
-		seedList = seedList.findAll{ item -> 
-			def itemArgs = item.tokenize('/')
-			return item.startsWith("${env}/") || item.startsWith("env-${env}/") || itemArgs.size() == 1 || (!environmentList.contains(itemArgs[0]) && !item.contains('templates/'))
-		}
-		//build the list
-		def seedFiles = []
-		seedList.each { seedName ->
-			classLoader.getResources("seed/${seedName}")?.eachWithIndex {res, index ->
-				if(seedName.endsWith('.groovy')) {
-					seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'groovy', fileSource:'classLoader']
-				} else if(seedName.endsWith('.yaml') || seedName.endsWith('.yml')) {
-					seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'yaml', fileSource:'classLoader']
-				} else if(seedName.endsWith('.json')) {
-					seedFiles << [file: res, name: seedName, plugin: index == 0 ? null : "classpath:${index}", type: 'json', fileSource:'classLoader']	
-				}
-				
-			}
-		}
-		seedFiles = seedFiles.sort{ a,b -> a.name <=> b.name}
-		return seedFiles
-	}
-
 	def getSeedFiles() {
-		def seedFiles = getClassPathSeedFiles()
-		if(seedFiles) {
-			return seedFiles
-		}
+		def (seedFiles, seedTemplates) = getClassPathSeedFiles()
+		//exit if we have them from the classpath
+		if(seedFiles)
+			return [seedFiles, seedTemplates]
+		//build the list based on environment
 		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
 		def seedPaths = getSeedPathsByPlugin()
 		def env = tmpEnvironmentFolder ?: Environment.current.name
@@ -698,6 +670,8 @@ class SeedService {
 							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'json']
 						else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
 							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'yaml']
+						else if(tmpFile.name.endsWith('.morpkg') || tmpFile.name.endsWith('.mopkg') || tmpFile.name.endsWith('.mpkg'))
+							appendPackageFiles(pluginName, tmpFile, seedFiles, seedTemplates)
 					}
 				}
 				seedFolder?.eachDir { tmpFolder ->
@@ -712,6 +686,8 @@ class SeedService {
 									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'json']
 								else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
 									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'yaml']
+								else if(tmpFile.name.endsWith('.morpkg') || tmpFile.name.endsWith('.mopkg') || tmpFile.name.endsWith('.mpkg'))
+									appendPackageFiles(pluginName, tmpFile, seedFiles, seedTemplates)
 							}
 						}
 					}
@@ -719,7 +695,119 @@ class SeedService {
 			}
 		}
 		seedFiles = seedFiles.sort{ a, b -> a.name <=> b.name }
-		return seedFiles
+		return [seedFiles, seedTemplates]
+	}
+
+	def getClassPathSeedFiles() {
+		ClassLoader classLoader = Thread.currentThread().contextClassLoader
+		def resources = classLoader.getResources('seeds.list')
+		def seedList = []
+		def templateList = []
+		resources.each { URL res ->
+				seedList += res?.text?.tokenize("\n") ?: []
+		}
+		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
+		def env = tmpEnvironmentFolder ?: Environment.current.name
+		//get environment matching templates
+		templateList = seedList.findAll{ item ->
+			def itemArgs = item.tokenize('/')
+			return item.contains('templates/')
+		}
+		//get environment matching seed
+		seedList = seedList.findAll{ item -> 
+			def itemArgs = item.tokenize('/')
+			return item.startsWith("${env}/") || item.startsWith("env-${env}/") || itemArgs.size() == 1 || (!environmentList.contains(itemArgs[0]) && !item.contains('templates/'))
+		}
+		//build the list
+		def seedFiles = []
+		def seedTemplates = []
+		//get templates
+		templateList.each { templateName ->
+			classLoader.getResources("seed/${templateName}")?.eachWithIndex { res, index ->
+				def pluginName = (index == 0 ? null : "classpath:${index}")
+				if(templateName.endsWith('.yaml') || templateName.endsWith('.yml'))
+					seedTemplates << [file:res, name:templateName, plugin:pluginName, type:'yaml', fileSource:'classLoader']
+				else if(templateName.endsWith('.json'))
+					seedTemplates << [file:res, name:templateName, plugin:pluginName, type:'json', fileSource:'classLoader']
+			}
+		}
+		//get seed
+		seedList.each { seedName ->
+			classLoader.getResources("seed/${seedName}")?.eachWithIndex { res, index ->
+				def pluginName = (index == 0 ? null : "classpath:${index}")
+				if(seedName.endsWith('.groovy'))
+					seedFiles << [file:res, name:seedName, plugin:pluginName, type:'groovy', fileSource:'classLoader']
+				else if(seedName.endsWith('.yaml') || seedName.endsWith('.yml'))
+					seedFiles << [file:res, name:seedName, plugin:pluginName, type:'yaml', fileSource:'classLoader']
+				else if(seedName.endsWith('.json'))
+					seedFiles << [file:res, name:seedName, plugin:pluginName, type:'json', fileSource:'classLoader']	
+				else if(tmpFile.name.endsWith('.morpkg') || tmpFile.name.endsWith('.mopkg') || tmpFile.name.endsWith('.mpkg'))
+					appendPackageFiles(pluginName, tmpFile, seedFiles, seedTemplates)
+			}
+		}
+		seedFiles = seedFiles.sort{ a, b -> a.name <=> b.name }
+		return [seedFiles, seedTemplates]
+	}
+
+	def appendPackageFiles(String pluginName, File packageFile, Collection seedFiles, Collection seedTemplates) {
+		//load the package
+		def packageOpts
+		Map packageData = loadPackageFiles(packageFile)
+		if(packageData.success == true) {
+			def packageCode = packageData.manifest.code
+			packageData.files.each { row ->
+				def seedItem = [plugin:pluginName, name:row.name, content:row.content, fileSource:'package']
+				//get the type
+				if(seedItem.name.endsWith('.groovy'))
+        	seedItem.type = 'groovy'
+        else if(seedItem.name.endsWith('.json'))
+        	seedItem.type = 'json'
+        else if(seedItem.name.endsWith('.yaml') || seedItem.name.endsWith('yml'))
+        	seedItem.type = 'yaml'
+        //add to the file or template list
+				if(seedItem.name?.startsWith('templates/')) {
+					//it's a template
+					seedTemplates << seedItem
+				} else {
+					//if its in a folder append the folder name (this is to work like the seed folders do
+					if(packageData.manifest.folderName)
+						seedItem.name = packageData.manifest.folderName + '/' + seedItem.name
+					seedFiles << seedItem
+				}
+			}
+		}
+	}
+
+	def loadPackageFiles(File packageFile) {
+		//map of parsed data
+		Map rtn = [success:false, files:[], manifest:null]
+		def zipInput
+		try {
+			zipInput = new ZipInputStream(packageFile.newInputStream())
+			//iterate the files
+      ZipEntry zipEntry
+      while((zipEntry = zipInput.getNextEntry()) != null) { // get next file and continue only if file is not null
+        if(zipEntry.getName().equals(packageManifestName)) {
+        	def manifestBytes = writeStreamToByteArray(zipInput)
+        	def manifestContent = new String(manifestBytes)
+        	def manifestData = new groovy.json.JsonSlurper().parseText(manifestContent)
+        	rtn.manifest = manifestData
+        	rtn.success = true
+        } else {
+        	def fileBytes = writeStreamToByteArray(zipInput)
+        	def fileContent = new String(fileBytes)
+        	def fileRow = [name:zipEntry.getName(), content:fileContent]
+        	rtn.files << fileRow
+				}
+      }
+	  } catch(e) {
+			log.error("error loading package files: ${e}", e)
+	  } finally{
+	    if(zipInput)
+	      zipInput.close()
+	  }
+	  log.debug("load package results: {}", rtn)
+	  return rtn
 	}
 
 	def gormFlush(session) {
@@ -761,16 +849,16 @@ class SeedService {
 					deps = sets.collect { "${it.plugin}.${it.name}" }
 				}
 				if(!deps) {
-					log.warn("Cannot Resolve Dependency (${depSeed})")
+					log.warn("cannot resolve dependency: (${depSeed})")
 				}
 				deps.each { dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByPlugin, seedSetsByName, templates, seedOrder) }
 			}
 		}
 		if(!set.checksumMatched) {
 			//if this seed set is in the list, run it
-			def seedCheck = checkChecksum(setKey)
-			if(seedSetsLeft[setKey] && (seedCheck?.checksum != set.checksum)) {
-				log.info("Processing $setKey")
+			//def seedCheck = checkChecksum(setKey)
+			if(seedSetsLeft[setKey]) { // && (seedCheck?.checksum != set.checksum)) {
+				log.info("processing: ${setKey}")
 				def seedTask = task {
 					SeedMeChecksum.withNewSession { session ->
 						SeedMeChecksum.withTransaction {
@@ -778,13 +866,13 @@ class SeedService {
 								set.seedList.each { seedItem ->
 									processSeedItem(set, seedItem, templates)
 								}
-								updateChecksum(seedCheck?.id, set.checksum, setKey)
+								updateChecksum(set.seedCheckId, set.checksum, setKey, set.seedVersion)
 								seedSetsLeft[setKey] = null
 								seedSetsLeft.remove(setKey)
 								seedOrder << set.name
 								gormFlush(session)
 							} catch(setError) {
-								log.error("error processing seed set ${set.name}",setError)
+								log.error("error processing seed set ${set.name}", setError)
 							}
 						}
 					}
@@ -804,9 +892,9 @@ class SeedService {
 				checkSumLoaded.set(true as Boolean)
 			}
 			def cache = checkSums.get()
-			rtn = cache?.find{seed -> seed.seedName == seedName}
+			rtn = cache?.find{ seed -> seed.seedName == seedName }
 			if(!rtn) {
-				rtn = new SeedMeChecksum(seedName: seedName)
+				rtn = new SeedMeChecksum(seedName:seedName)
 			}
 		} catch(e) {
 			log.warn("Warning during Seed CheckSum Verification ${e.getMessage()}")
@@ -814,18 +902,17 @@ class SeedService {
 		return rtn
 	}
 
-	private updateChecksum(seedCheckId, newChecksum, setKey) {
+	private updateChecksum(seedCheckId, newChecksum, setKey, setVersion) {
 		// again, don't require that the SeedMeChecksum domain be around
 		try {
 			def seedCheck
 			if(!seedCheckId) {
-				seedCheck = new SeedMeChecksum(seedName: setKey)
-			}
-			else {
+				seedCheck = new SeedMeChecksum(seedName:setKey)
+			} else {
 				seedCheck = SeedMeChecksum.get(seedCheckId)
 			}
-			
 			seedCheck.checksum = newChecksum
+			seedCheck.seedVersion = setVersion
 			seedCheck.save(flush:true)
 		} catch(e) {
 			log.warn("Error updating seed checksum record... ${e}",e)
@@ -836,6 +923,20 @@ class SeedService {
 		// dependency names may already contain the plugin name, so check first
 		if(name.contains('.')) return name
 		else "${pluginName ? "${pluginName}." : ''}${name}"
+	}
+
+	private byte[] writeStreamToByteArray(InputStream inputStream) {
+		def bytesOut = new ByteArrayOutputStream()
+		writeStreamToOut(inputStream, bytesOut)
+		return bytesOut.toByteArray()
+	}
+
+	private void writeStreamToOut(InputStream inputStream, OutputStream out) {
+		byte[] buffer = new byte[102400]
+		int len
+		while((len = inputStream.read(buffer)) != -1) {
+			out.write(buffer, 0, len)
+		}
 	}
 
 	private lookupDomain(domainClassName) {

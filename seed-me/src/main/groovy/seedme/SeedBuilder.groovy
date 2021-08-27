@@ -9,6 +9,7 @@ class SeedBuilder extends BuilderSupport {
 	def seedList
 	def currentRow
 	def seedItem
+	def seedVersion
 	def dependsOn = []
 	def seeding = false
 
@@ -25,22 +26,26 @@ class SeedBuilder extends BuilderSupport {
 	}
 
 	@Override
-	protected createNode(name, value ) {
+	protected createNode(name, value) {
 		if(name == 'meta')
 			currentRow.meta = value
 		else if(currentRow == null && name == 'dependsOn')
 			dependsOn = value
+		else if(currentRow == null && name == 'seedVersion')
+			seedVersion = value
 		else
 			currentRow.data[name] = value
 		return name
 	}
 
 	@Override
-	protected createNode( name, Map attribs ) {
+	protected createNode(name, Map attribs) {
 		if(seeding) {
 			if(seedItem == null) {
 				if(name == 'dependsOn') {
 					dependsOn = attribs
+				} else if(name == 'seedVersion') {
+					seedVersion = attribs
 				} else {
 					currentRow = [domainClass:name, data:attribs, meta:[:]]
 					if(attribs.meta) {
