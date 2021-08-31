@@ -705,36 +705,33 @@ class SeedService {
 	}
 
 	def appendSeedFiles(Collection seedFiles, Collection seedTemplates, String pluginName, File seedFolder, String parentPath, Integer level) {
-		//if it exists
-		if(seedFolder.exists()) {
-			//append files
-			seedFolder?.eachFile { tmpFile ->
-				if(!tmpFile.isDirectory() && !isSeedFileExcluded(tmpFile.name)) {
-					def seedName = parentPath ? "${parentPath}/${tmpFile.name}" : tmpFile.name
-					if(tmpFile.name.endsWith('.groovy'))
-						seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'groovy']
-					else if(tmpFile.name.endsWith('.json'))
-						seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'json']
-					else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
-						seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'yaml']
-					else if(tmpFile.name.endsWith('.zip') || tmpFile.name.endsWith('.morpkg') || tmpFile.name.endsWith('.mopkg') || tmpFile.name.endsWith('.mpkg'))
-						appendPackageFiles(seedFiles, seedTemplates, pluginName, tmpFile, parentPath)
-				}
+		//append files
+		seedFolder?.eachFile { tmpFile ->
+			if(!tmpFile.isDirectory() && !isSeedFileExcluded(tmpFile.name)) {
+				def seedName = parentPath ? "${parentPath}/${tmpFile.name}" : tmpFile.name
+				if(tmpFile.name.endsWith('.groovy'))
+					seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'groovy']
+				else if(tmpFile.name.endsWith('.json'))
+					seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'json']
+				else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
+					seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'yaml']
+				else if(tmpFile.name.endsWith('.zip') || tmpFile.name.endsWith('.morpkg') || tmpFile.name.endsWith('.mopkg') || tmpFile.name.endsWith('.mpkg'))
+					appendPackageFiles(seedFiles, seedTemplates, pluginName, tmpFile, parentPath)
 			}
-			//append folders
-			seedFolder?.eachDir { tmpFolder ->
-				if(tmpFolder.name == env || (tmpFolder.name == 'env-' + env) || //if the name matches for legacy or env- matches..
-						(!environmentList.contains(tmpFolder.name) && !tmpFolder.name.startsWith('env-'))) { //process sub folders that environment specific
-					//templates?
-					if(tmpFolder.name == 'templates') {
-						//append templates
-						def newParentPath = parentPath ? "${parentPath}/${tmpFolder.name}" : tmpFolder.name
-						appendSeedTemplates(seedTemplates, pluginName, tmpFolder, newParentPath, level)
-					} else {
-						//append contents
-						def newParentPath = parentPath ? "${parentPath}/${tmpFolder.name}" : tmpFolder.name
-						appendSeedFiles(seedFiles, seedTemplates, pluginName, tmpFolder, newParentPath, level + 1)
-					}
+		}
+		//append folders
+		seedFolder?.eachDir { tmpFolder ->
+			if(tmpFolder.name == env || (tmpFolder.name == 'env-' + env) || //if the name matches for legacy or env- matches..
+					(!environmentList.contains(tmpFolder.name) && !tmpFolder.name.startsWith('env-'))) { //process sub folders that environment specific
+				//templates?
+				if(tmpFolder.name == 'templates') {
+					//append templates
+					def newParentPath = parentPath ? "${parentPath}/${tmpFolder.name}" : tmpFolder.name
+					appendSeedTemplates(seedTemplates, pluginName, tmpFolder, newParentPath, level)
+				} else {
+					//append contents
+					def newParentPath = parentPath ? "${parentPath}/${tmpFolder.name}" : tmpFolder.name
+					appendSeedFiles(seedFiles, seedTemplates, pluginName, tmpFolder, newParentPath, level + 1)
 				}
 			}
 		}
