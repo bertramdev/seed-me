@@ -11,7 +11,7 @@
   "createdBy": {
     "gradle": {
       "version": "6.8.3",
-      "buildId": "u6ymvs2t5jc75hcf4gszy3sa4u"
+      "buildId": "i5pfjlq5tvf3hjo2x6zuphfvzy"
     }
   },
   "variants": [
@@ -29,10 +29,10 @@
           "name": "seed-me-gradle-4.2.1-SNAPSHOT.jar",
           "url": "seed-me-gradle-4.2.1-SNAPSHOT.jar",
           "size": 15051,
-          "sha512": "3b703136326fcb171125da0282d47b96b11350289ed53c0019046bd3ce263c8f68eb94fa73eb1acb304bff3a2fc9133d9ac1b8a52319b7ccb42bfd04941147b1",
-          "sha256": "f2b4c14d3982364f267972b25f241755df64722599b4301515f8ce7dfef12ee5",
-          "sha1": "e08c61f55fde5027178336fcd4a2bb502a8cbf11",
-          "md5": "1ac03cad64b33e61df87183d6b2954ce"
+          "sha512": "2a27fdacdbfea67ddcb197e78e74f74f7b78c4ab7d18d3ebe6faa7bf7c2f0d2bf27368ab27d9992b348109bc0859d93c5db7976da35a9987dceabf38dbb8fe44",
+          "sha256": "e6fb651cea3c926d06b29f4e38fcf69f3eae7211d60e681b08603922970c55c4",
+          "sha1": "0fa74b6f1b91d4f6205740758473e3822b3931d1",
+          "md5": "5b16f1229ca9e4a208405d09cc30adfb"
         }
       ]
     },
@@ -50,10 +50,10 @@
           "name": "seed-me-gradle-4.2.1-SNAPSHOT.jar",
           "url": "seed-me-gradle-4.2.1-SNAPSHOT.jar",
           "size": 15051,
-          "sha512": "3b703136326fcb171125da0282d47b96b11350289ed53c0019046bd3ce263c8f68eb94fa73eb1acb304bff3a2fc9133d9ac1b8a52319b7ccb42bfd04941147b1",
-          "sha256": "f2b4c14d3982364f267972b25f241755df64722599b4301515f8ce7dfef12ee5",
-          "sha1": "e08c61f55fde5027178336fcd4a2bb502a8cbf11",
-          "md5": "1ac03cad64b33e61df87183d6b2954ce"
+          "sha512": "2a27fdacdbfea67ddcb197e78e74f74f7b78c4ab7d18d3ebe6faa7bf7c2f0d2bf27368ab27d9992b348109bc0859d93c5db7976da35a9987dceabf38dbb8fe44",
+          "sha256": "e6fb651cea3c926d06b29f4e38fcf69f3eae7211d60e681b08603922970c55c4",
+          "sha1": "0fa74b6f1b91d4f6205740758473e3822b3931d1",
+          "md5": "5b16f1229ca9e4a208405d09cc30adfb"
         }
       ]
     },
@@ -70,10 +70,10 @@
           "name": "seed-me-gradle-4.2.1-SNAPSHOT-sources.jar",
           "url": "seed-me-gradle-4.2.1-SNAPSHOT-sources.jar",
           "size": 3755,
-          "sha512": "9cf4b25c44b238ca36949dec717d305bdb2055a4278861d8cda11f00f2282642ba6aca8943a75d335b2c99416e9dbd827faf1f74e92b58af91c9bb063f207df3",
-          "sha256": "3a7bdb4a10b443728faf979a090925aa35fda0f274f0dcf93f444f22f187a029",
-          "sha1": "564124d47515d060c6950b7f33e97d5effec4dc6",
-          "md5": "b33e0809f4226fccfd50ca3d5b786160"
+          "sha512": "bf5e846291dcbcd86ea43f141c73539e79614659f93ea9f3723d07c393c4f3cc7bb2dce1d2757bab2007ea199f5c8fb2495ff17c8b1041cc0be7c2c7e66418e8",
+          "sha256": "d11668fff91f4f4f84f2bda4657b7fb5e20f0b40b75c06bab96891fd867bc3f6",
+          "sha1": "d98385e38c8d80f79fc4f648fcc4e35f4290e483",
+          "md5": "cabb3698213c58ebae5371bc3c65c9c8"
         }
       ]
     },
@@ -90,10 +90,10 @@
           "name": "seed-me-gradle-4.2.1-SNAPSHOT-javadoc.jar",
           "url": "seed-me-gradle-4.2.1-SNAPSHOT-javadoc.jar",
           "size": 261,
-          "sha512": "fd9ecebec907acad77b4fa44d1f1a95a6f878e09f2c8758368cf36b9c8d990d300f52ae53c044b2d9a3fb63234d9a4f431b1daafbf4bcd447f032fc60bf04ef4",
-          "sha256": "c6abd6d01445c2e0427c2b4c31b82da31e24a1abea26bee87255242db1b133a8",
-          "sha1": "c4f27fc10f5031a125fcb2d1e847dd2c9448023e",
-          "md5": "ce1162b794dcb80f8308e97908bce89d"
+          "sha512": "c7d7993ce5d0c64061b81c083591f320ec10ca4781a702e0888868dd87be58d48aa117922ae7925dfa646c2c3930f60529d1eae8620dd47985107306c33033e0",
+          "sha256": "c3230b71c08c98912f3f0d278ae75e8ff8781032baa1cc6b0799ef2b1b628184",
+          "sha1": "162033198010b2eadeab85c258c0fed312278cdd",
+          "md5": "f142521e28dff8c9edf8e5bb6cb66ab5"
         }
       ]
     }
