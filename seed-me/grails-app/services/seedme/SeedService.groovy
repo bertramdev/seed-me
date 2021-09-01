@@ -343,12 +343,11 @@ class SeedService {
 						} else {
 							log.warn "Association is not handled thus this object may not be seeded: ${tmpProp.getName()} type: ${tmpProp.getType()?.getName()}"
 						}
-					}
-					// if domain class property type is an enum, transform value into the appropriate enum type
-					else if (tmpProp.type.isEnum() && value instanceof String) {
+					} else if(tmpProp.type.isEnum() && value instanceof String) {
+						// if domain class property type is an enum, transform value into the appropriate enum type
 						setSeedValue(seedSet, saveData, key, Enum.valueOf(tmpProp.type, value), templates)
-					}
-					else {
+					} else {
+						//basic value
 						setSeedValue(seedSet, saveData, key, value, templates)
 					}
 				} else {
@@ -383,7 +382,7 @@ class SeedService {
 				if(tmpObj) {
 					data[key] = tmpObj
 				} else {
-					log.warn("Seed: Unable to locate domain Object ${domain} with criteria ${value}")
+					log.warn("seed: ${seedSet?.name} - unable to locate domain object ${domain} with criteria ${value}")
 				}
 			} else if(value instanceof List) {
 				data[key] = value.collect {
@@ -396,8 +395,8 @@ class SeedService {
 					}
 					def tmpObj = findSeedObject(domain, tmpCriteria)
 					if(!tmpObj) {
-						log.warn("Seed: Unable to locate domain Object ${domain} with criteria ${tmpCriteria}")
-					} 
+						log.warn("seed: ${seedSet?.name} - unable to locate domain object ${domain} with criteria ${tmpCriteria}")
+					}
 					return tmpObj
 				}.findAll{ it!=null }
 			}
@@ -414,7 +413,7 @@ class SeedService {
 			}
 			def seedObject = findSeedObject(tmpMatchDomain ?: key, value)
 			if(!seedObject && key != getMetaKey()) {
-				log.warn("Seed: Unable to locate domain Object ${tmpMatchDomain ?: key} with criteria ${value}");
+				log.warn("seed: ${seedSet?.name} - unable to locate domain object ${tmpMatchDomain ?: key} with criteria ${value}")
 			}
 			if(tmpObjectMeta && tmpObjectMeta['useId']==true)
 				seedObject = seedObject?.id
@@ -431,43 +430,25 @@ class SeedService {
 			data[key] = value.value
 		} else if(value instanceof Map && value._template == true) {
 			//check the template map
-			def templateMatch = templates?.find{ it.name == value.value }
-			if(templateMatch) {
-				//todo - support loading from a file
-				if(templateMatch.content)
-					data[key] = templateMatch.content
-				else if(templateMatch.file)
-					data[key] = templateMatch.file.getText()
-			} else {
-				//load the content from a file
-				if(seedSet?.seedFile?.file) {
-					if(seedSet?.seedFile?.fileSource == 'classLoader') {
-						//for templates built in
-						String[] seedNameArgs = seedSet?.seedFile.name.tokenize('/')
-						def templateFile = "seed/${value.value}"
-						if(seedNameArgs.size() > 1) {
-							templateFile = "seed/" + seedNameArgs[0..-2].join('/') + '/' + value.value
-						}
-						def res = grailsApplication.mainContext.getResource(templateFile)
-						if(!res.exists()) {
-							res = grailsApplication.mainContext.getResource("classpath:" + templateFile)
-						}
-						if(res.exists()) {
-							data[key] = res.inputStream.getText('UTF-8')
-						} else {
-							log.warn("seed value template not found: ${value.value} - templateFile: ${templateFile} - ${seedSet?.seedFile.name.tokenize('/')}")
-						}
-					} else {
-						def parentFile = seedSet.seedFile.file.getParentFile()
-						def templateFile = new File(parentFile, value.value)
-						//println("loading seed template: ${templateFile.getPath()} - ${templateFile.exists()}")
-						if(templateFile.exists()) {
-							data[key] = templateFile.getText()
-						} else {
-							log.warn("seed value template not found: ${value.value}")
-						}
-					}
+			def templateName = value.value
+			def templateMatch = templates?.find{ it.name == templateName }
+			if(!templateMatch) {
+				//sub folder - built the name
+				def seedNameTokens = seedSet?.seedFile.name.tokenize('/')
+				if(seedNameTokens.size() > 1) {
+					templateName = seedNameTokens[0..-2].join('/') + '/' + templateName
+					templateMatch = templates?.find{ it.name == templateName }
 				}
+			}
+			if(templateMatch) {
+				def templateContent = templateMatch.content
+				if(!templateContent && templateMatch.file) {
+					templateContent = templateMatch.file.getText('UTF-8')
+				}
+				//set the content
+				data[key] = templateContent
+			} else {
+				log.warn("seed value template not found: ${value.value} - templateFile: ${templateName} - ${seedSet?.name}")
 			}
 		} else if(value instanceof CharSequence && value.toString().indexOf('$') >= 0) {
 			data[key] = new GStringTemplateEngine().createTemplate(value.toString()).make(getDomainBindingsForGString()).toString()
@@ -667,37 +648,6 @@ class SeedService {
 			if(seedFolder.exists()) {
 				//append the seed files
 				appendSeedFiles(seedFiles, seedTemplates, pluginName, seedFolder, null, 0)
-				/*seedFolder?.eachFile { tmpFile ->
-					if(!tmpFile.isDirectory() && !isSeedFileExcluded(tmpFile.name)) {
-						if(tmpFile.name.endsWith('.groovy'))
-							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'groovy']
-						else if(tmpFile.name.endsWith('.json'))
-							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'json']
-						else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
-							seedFiles << [file:tmpFile, name:tmpFile.name, plugin:pluginName, type:'yaml']
-						else if(tmpFile.name.endsWith('.zip') || tmpFile.name.endsWith('.morpkg') || tmpFile.name.endsWith('.mopkg') || tmpFile.name.endsWith('.mpkg'))
-							appendPackageFiles(seedFiles, seedTemplates, pluginName, tmpFile, null)
-					}
-				}
-				seedFolder?.eachDir { tmpFolder ->
-					if(tmpFolder.name == env || (tmpFolder.name == 'env-' + env) || //if the name matches for legacy or env- matches..
-							(!environmentList.contains(tmpFolder.name) && !tmpFolder.name.startsWith('env-'))) { //process sub folders that environment specific
-						tmpFolder.eachFile { tmpFile ->
-							def seedName = "${tmpFolder.name}/${tmpFile.name}"
-							if(!tmpFile.isDirectory() && !isSeedFileExcluded(tmpFile.name)) {
-								if(tmpFile.name.endsWith('.groovy'))
-									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'groovy']
-								else if(tmpFile.name.endsWith('.json'))
-									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'json']
-								else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
-									seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'yaml']
-								else if(tmpFile.name.endsWith('.zip') || tmpFile.name.endsWith('.morpkg') || tmpFile.name.endsWith('.mopkg') || tmpFile.name.endsWith('.mpkg'))
-									appendPackageFiles(seedFiles, seedTemplates, pluginName, tmpFile, null)
-							}
-							//if it is a directory - go one more level? change to recursive
-						}
-					}
-				}*/
 			}
 		}
 		seedFiles = seedFiles.sort{ a, b -> a.name <=> b.name }
@@ -705,7 +655,7 @@ class SeedService {
 	}
 
 	def appendSeedFiles(Collection seedFiles, Collection seedTemplates, String pluginName, File seedFolder, String parentPath, Integer level) {
-		println("appendSeedFiles: ${pluginName} - ${seedFolder} - ${parentPath}")
+		log.debug("appendSeedFiles: ${pluginName} - ${seedFolder} - ${parentPath}")
 		try {
 			def tmpEnvironmentFolder = getEnvironmentSeedPath()
 			def env = tmpEnvironmentFolder ?: Environment.current.name
@@ -720,12 +670,12 @@ class SeedService {
 					else if(tmpFile.name.endsWith('.yaml') || tmpFile.name.endsWith('.yml'))
 						seedFiles << [file:tmpFile, name:seedName, plugin:pluginName, type:'yaml']
 					else if(tmpFile.name.endsWith('.zip') || tmpFile.name.endsWith('.morpkg') || tmpFile.name.endsWith('.mopkg') || tmpFile.name.endsWith('.mpkg'))
-						appendPackageFiles(seedFiles, seedTemplates, pluginName, tmpFile, parentPath)
+						appendPackageFiles(seedFiles, seedTemplates, pluginName, tmpFile)
 				}
 			}
 			//append folders
 			seedFolder?.eachDir { tmpFolder ->
-				println("appendSeedFolder: ${pluginName} - ${tmpFolder} - ${parentPath}")
+				log.debug("appendSeedFolder: ${pluginName} - ${tmpFolder} - ${parentPath}")
 				if(tmpFolder.name == env || (tmpFolder.name == 'env-' + env) || //if the name matches for legacy or env- matches..
 						(!environmentList.contains(tmpFolder.name) && !tmpFolder.name.startsWith('env-'))) { //process sub folders that environment specific
 					//templates?
@@ -734,8 +684,8 @@ class SeedService {
 						def newParentPath = parentPath ? "${parentPath}/${tmpFolder.name}" : tmpFolder.name
 						appendSeedTemplates(seedTemplates, pluginName, tmpFolder, newParentPath, level)
 					} else if(tmpFolder.name == 'packages' || tmpFolder.name.endsWith('/packages')) {
-						//append templates
-						appendSeedTemplates(seedTemplates, pluginName, tmpFolder, parentPath, level)
+						//append packages
+						appendSeedFiles(seedFiles, seedTemplates, pluginName, tmpFolder, parentPath, level)
 					} else {
 						//append contents
 						def newParentPath = parentPath ? "${parentPath}/${tmpFolder.name}" : tmpFolder.name
@@ -752,6 +702,7 @@ class SeedService {
 		//append files
 		templateFolder?.eachFile { tmpFile ->
 			if(!tmpFile.isDirectory()) {
+				//set the template name relative to where it was found
 				def templateName = parentPath ? "${parentPath}/${tmpFile.name}" : tmpFile.name
 				def templateItem = [plugin:pluginName, name:templateName, file:tmpFile]
 				seedTemplates << templateItem
@@ -765,13 +716,12 @@ class SeedService {
 		def seedList = []
 		def templateList = []
 		resources.each { URL res ->
-				seedList += res?.text?.tokenize("\n") ?: []
+			seedList += res?.text?.tokenize("\n") ?: []
 		}
 		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
 		def env = tmpEnvironmentFolder ?: Environment.current.name
 		//get environment matching templates
 		templateList = seedList.findAll{ item ->
-			def itemArgs = item.tokenize('/')
 			return item.contains('templates/')
 		}
 		//get environment matching seed
@@ -784,48 +734,56 @@ class SeedService {
 		def seedTemplates = []
 		//get templates
 		templateList.each { templateName ->
-			classLoader.getResources("seed/${templateName}")?.eachWithIndex { res, index ->
+			classLoader.getResources("seed/${templateName}")?.eachWithIndex { row, index ->
 				def pluginName = (index == 0 ? null : "classpath:${index}")
-				if(templateName.endsWith('.yaml') || templateName.endsWith('.yml'))
-					seedTemplates << [file:res, name:templateName, plugin:pluginName, type:'yaml', fileSource:'classLoader']
-				else if(templateName.endsWith('.json'))
-					seedTemplates << [file:res, name:templateName, plugin:pluginName, type:'json', fileSource:'classLoader']
+				def seedItem = [plugin:pluginName, name:templateName, file:row, fileSource:'package']
+				//get the content
+				//seedItem.content = row.inputStream.getText('UTF-8')
+				seedTemplates << seedItem
 			}
 		}
 		//get seed
 		seedList.each { seedName ->
 			classLoader.getResources("seed/${seedName}")?.eachWithIndex { res, index ->
-				def seedFile = new File(res.toURI())
 				def pluginName = (index == 0 ? null : "classpath:${index}")
 				if(seedName.endsWith('.groovy'))
-					seedFiles << [file:seedFile, name:seedName, plugin:pluginName, type:'groovy', fileSource:'classLoader']
+					seedFiles << [file:res, name:seedName, plugin:pluginName, type:'groovy', fileSource:'classLoader']
 				else if(seedName.endsWith('.yaml') || seedName.endsWith('.yml'))
-					seedFiles << [file:seedFile, name:seedName, plugin:pluginName, type:'yaml', fileSource:'classLoader']
+					seedFiles << [file:res, name:seedName, plugin:pluginName, type:'yaml', fileSource:'classLoader']
 				else if(seedName.endsWith('.json'))
-					seedFiles << [file:seedFile, name:seedName, plugin:pluginName, type:'json', fileSource:'classLoader']	
+					seedFiles << [file:res, name:seedName, plugin:pluginName, type:'json', fileSource:'classLoader']	
 				else if(seedName.endsWith('.zip') || seedName.endsWith('.morpkg') || seedName.endsWith('.mopkg') || seedName.endsWith('.mpkg'))
-					appendPackageFiles(seedFiles, seedTemplates, pluginName, seedFile, null)
+					appendPackageFiles(seedFiles, seedTemplates, pluginName, res)
 			}
 		}
 		seedFiles = seedFiles.sort{ a, b -> a.name <=> b.name }
 		return [seedFiles, seedTemplates]
 	}
 
-	def appendPackageFiles(Collection seedFiles, Collection seedTemplates, String pluginName, File packageFile, String parentPath) {
-		//load the package
-		def packageOpts
+	def appendPackageFiles(Collection seedFiles, Collection seedTemplates, String pluginName, URL packageResource) {
+		Map packageData = loadPackageFiles(packageResource)
+		appendPackageFiles(seedFiles, seedTemplates, pluginName, packageData)
+	}
+
+	def appendPackageFiles(Collection seedFiles, Collection seedTemplates, String pluginName, File packageFile) {
 		Map packageData = loadPackageFiles(packageFile)
+		appendPackageFiles(seedFiles, seedTemplates, pluginName, packageData)
+	}
+
+	def appendPackageFiles(Collection seedFiles, Collection seedTemplates, String pluginName, Map packageData) {
+		//load the package
 		if(packageData.success == true) {
 			def packageCode = packageData.manifest.code
+			def packageFolder = packageData.manifest.folderName
 			packageData.files.each { row ->
-				def seedName = parentPath ? "${parentPath}/${row.name}" : row.name
+				def seedName = packageFolder ? packageFolder + '/' + row.name : row.name
 				def seedItem = [plugin:pluginName, name:seedName, content:row.content, fileSource:'package']
 				//get the type
 				if(seedItem.name.endsWith('.groovy'))
         	seedItem.type = 'groovy'
         else if(seedItem.name.endsWith('.json'))
         	seedItem.type = 'json'
-        else if(seedItem.name.endsWith('.yaml') || seedItem.name.endsWith('yml'))
+        else if(seedItem.name.endsWith('.yaml') || seedItem.name.endsWith('.yml'))
         	seedItem.type = 'yaml'
         //add to the file or template list
 				if(row.name?.startsWith('templates/')) {
@@ -833,21 +791,26 @@ class SeedService {
 					seedTemplates << seedItem
 				} else {
 					//its seed file - add it
-					//if its in a folder append the folder name - unless its already in the right folder
-					if(packageData.manifest.folderName && (parentPath == null || !parentPath.endsWith(packageData.manifest.folderName)))
-						seedItem.name = packageData.manifest.folderName + '/' + seedItem.name
 					seedFiles << seedItem
 				}
 			}
 		}
 	}
 
+	def loadPackageFiles(URL packageResource) {
+		return loadPackageFiles(packageResource.newInputStream())
+	}
+
 	def loadPackageFiles(File packageFile) {
+		return loadPackageFiles(packageFile.newInputStream())
+	}
+
+	def loadPackageFiles(InputStream inputStream) {
 		//map of parsed data
 		Map rtn = [success:false, files:[], manifest:null]
 		def zipInput
 		try {
-			zipInput = new ZipInputStream(packageFile.newInputStream())
+			zipInput = new ZipInputStream(inputStream)
 			//iterate the files
       ZipEntry zipEntry
       while((zipEntry = zipInput.getNextEntry()) != null) { // get next file and continue only if file is not null
@@ -901,7 +864,7 @@ class SeedService {
 		def setKey = buildSeedSetKey(set.name, set.plugin)
 		// if this set has dependencies, process them first
 		if(set.dependsOn) {
-			// println "\tdependencies : ${set.dependsOn.join(', ')}"
+			log.debug("\tdependencies : ${set.dependsOn.join(', ')}")
 			set.dependsOn.each { depSeed ->
 				def deps = []
 				// if the plugin is specified, construct the correct key
@@ -979,7 +942,7 @@ class SeedService {
 			seedCheck.seedVersion = setVersion
 			seedCheck.save(flush:true)
 		} catch(e) {
-			log.warn("Error updating seed checksum record... ${e}",e)
+			log.warn("Error updating seed checksum record... ${e}", e)
 		}
 	}
 
