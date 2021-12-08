@@ -5,6 +5,7 @@ SeedMe is a simple plugin that was created to provide an easy way to add config 
 
 Release Notes
 -------------
+* __5.0.0__: Grails 5 support
 * __4.1.6__: Split gradle plugin into seed-me-gradle and fixed issues with templates
 * __4.1.4__: Actually Updated the ReadME Sorry! Added YAML,JSON seed template support
 * __0.6.5__: Fixed meta support to respect the update attribute
