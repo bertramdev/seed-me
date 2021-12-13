@@ -97,7 +97,7 @@ publishing {
     repositories {
         maven {
             if( !isReleaseVersion ) {
-                url = "http://nexus.bertramlabs.com/content/repositories/snapshots"
+                url = "https://nexus.bertramlabs.com/content/repositories/snapshots"
                 if(project.hasProperty('labsNexusUser')) {
                     credentials {
                         username = labsNexusUser
