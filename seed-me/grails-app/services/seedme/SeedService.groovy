@@ -493,10 +493,12 @@ class SeedService {
 	}
 
 	String getSeedRoot() {
-		if(grailsApplication.warDeployed)
+		String rootPath = grailsApplication.config.getProperty('grails.plugin.seed.root',String,'src/seed')
+		if(grailsApplication.warDeployed) {
 			grailsApplication.mainContext.getResource('seed').file.path
-		else
-			BuildSettings.BASE_DIR + "/" + (getConfig()?.root ?: 'src/seed')
+		} else {
+			BuildSettings.BASE_DIR + "/" + rootPath
+		}
 	}
 
 	String getSeedPath(name) {
@@ -504,15 +506,11 @@ class SeedService {
 	}
 
 	String getMetaKey() {
-		getConfig()?.metaKey ?: 'meta'
+		grailsApplication.config.getProperty('grails.plugin.seed.metaKey',String,'meta')
 	}
 
 	def getEnvironmentSeedPath() {
-		return getConfig()?.environment
-	}
-
-	def getConfig() {
-		return grailsApplication.config.getProperty('grails.plugin.seed',Map,[:])
+		grailsApplication.config.getProperty('grails.plugin.seed.environment',String,null)
 	}
 
 	def createSeed(domain, key, config, opts = [:]) {
@@ -588,16 +586,16 @@ class SeedService {
 		if(name == 'application'){
 			return false
 		}
-		
-		if(getConfig().skipPlugins) {
+		Boolean skipPlugins = grailsApplication.config.getProperty('grails.plugin.seed.skipPlugins',Boolean,false)
+		if(skipPlugins) {
 			return true
 		}
-		def excluded = getConfig().excludedPlugins ?: []
+		def excluded = grailsApplication.config.getProperty('grails.plugin.seed.excludedPlugins',List<String>,[])
 		return excluded.find { it == name}
 	}
 
 	private boolean isSeedFileExcluded(name) {
-		def excluded = getConfig().excludedSeedFiles ?: []
+		def excluded =  grailsApplication.config.getProperty('grails.plugin.seed.excludedSeedFiles',List<String>,[])
 		return excluded.find { it == name || it == FNU.getBaseName(name) || it == FNU.getName(name)}
 	}
 
@@ -614,7 +612,7 @@ class SeedService {
 				}
 			}
 		} else {
-			def seedRoot = getConfig()?.root ?: 'src/seed'
+			String seedRoot = grailsApplication.config.getProperty('grails.plugin.seed.root',String,'src/seed')
 			pluginManager.getAllPlugins()?.each { plugin ->
 				try {
 					if(!isPluginExcluded(plugin.name)) {
