@@ -58,8 +58,9 @@ Brief summary/description of the plugin.
 
     def watchedResources = "file:./seed/*.groovy"
 
+	@Override
     void onChange(Map<String, Object> event) {
-        def autoSeed = grailsApplication.config.grails.seed.autoSeed
+        def autoSeed = grailsApplication.config.getProperty('grails.plugin.seed.autoSeed', Boolean, true)
         if(!(autoSeed instanceof Boolean)) {
             autoSeed = true
         }
@@ -69,14 +70,14 @@ Brief summary/description of the plugin.
     }
 
 
-
+	@Override
     void onStartup(Map<String, Object> event) {
-        def seedService = applicationContext['seedService']
-        def autoSeed = grailsApplication.config.grails.plugin.seed.autoSeed
+	    def seedService = applicationContext['seedService']
+        def autoSeed = grailsApplication.config.getProperty('grails.plugin.seed.autoSeed', Boolean, false)
         if(!(autoSeed instanceof Boolean)) {
             autoSeed = false
         }
-        if(!Environment.isDevtoolsRestart() && (autoSeed == true || System.getProperty('autoSeed', 'false') == 'true')) {
+	    if(!Environment.isDevtoolsRestart() && (autoSeed == true || System.getProperty('autoSeed', 'false') == 'true')) {
             SeedMeChecksum.withNewSession { session ->
                 seedService.installSeedData()
             }

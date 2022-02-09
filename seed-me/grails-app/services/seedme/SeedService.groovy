@@ -512,7 +512,7 @@ class SeedService {
 	}
 
 	def getConfig() {
-		return grailsApplication.config.grails.plugin.seed
+		return grailsApplication.config.getProperty('grails.plugin.seed',Map,[:])
 	}
 
 	def createSeed(domain, key, config, opts = [:]) {

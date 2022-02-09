@@ -16,15 +16,36 @@
 
 package seedme.gradle
 
+import org.gradle.api.tasks.Input
+
 /**
  * Allows configuration of the Gradle plugin
  *
  * @author David Estes
  */
 class SeedMeExtension {
-    String seedPath = 'src/seed'
-    String compileDir = 'build/seed'
-    
+
+	private String seedPath = 'src/seed'
+	private String compileDir = 'build/seed'
+
+	@Input
+	String getSeedPath() {
+		return this.seedPath
+	}
+
+	void setSeedPath(String path) {
+		this.seedPath = path
+	}
+
+	@Input
+	String getCompileDir() {
+		return this.compileDir
+	}
+
+	void setCompileDir(String dir) {
+		this.compileDir = dir
+	}
+
     Map toMap() {
         return [seedPath: seedPath, compileDir: compileDir]
     }

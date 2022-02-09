@@ -5,7 +5,9 @@ import groovy.transform.CompileStatic
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.FileTree
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 import groovy.io.FileType
@@ -15,9 +17,11 @@ import groovy.io.FileType
 @CompileStatic
 class SeedMePackage extends DefaultTask {
     private String destinationDirectoryPath
-    @Delegate SeedMeExtension seedMeExtension = new SeedMeExtension()
 
-    @Input
+	@Internal
+    @Delegate(methodAnnotations = true) SeedMeExtension seedMeExtension = new SeedMeExtension()
+
+    @InputDirectory
     File getSeedDir() {
         def path = seedMeExtension.seedPath
         return path ? new File(path) : null
