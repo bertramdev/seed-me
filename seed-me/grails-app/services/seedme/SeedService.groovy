@@ -883,7 +883,7 @@ class SeedService {
 			//if this seed set is in the list, run it
 			//def seedCheck = checkChecksum(setKey)
 			if(seedSetsLeft[setKey]) { // && (seedCheck?.checksum != set.checksum)) {
-				log.info("processing: ${setKey}")
+				log.debug("processing: ${setKey}")
 				def seedTask = task {
 					SeedMeChecksum.withNewSession { session ->
 						SeedMeChecksum.withTransaction {
