@@ -107,13 +107,52 @@ class SeedService {
 			log.info("processing external seed")
 			tmpSet.seedList?.each { tmpSeed ->
 				try {
-					processSeedItem(tmpSet, tmpSeed)
+					processSeedItem(tmpSet, tmpSeed, [])
 				} catch(e) {
 					log.error("error processing seed item ${tmpSeed}", e)
 					throw e
 				}
 			}
-			processSeedItem(tmpSet, tmpSet)
+		} catch(e) {
+			//log.error(e)
+			throw e
+		}
+	}
+
+	/**
+	 * Allows creating seed by passing in a string of content
+	 * @param String seedContent - seed file contents as a string
+	 * @param String seedType - seed file type as a string, e.g. yaml, groovy, json
+	 * @param Map classMapping - A map that allows classes and properties from the seed to be updated to the correct values in the application. E.g.: ['cloud': ['domain': 'zone', 'propertyMapping': ['cloudDescription':'description']]]
+	 */
+	def installExternalSeed(seedContent, seedType, classMapping = [:]) {
+		try {
+			def tmpSet = buildSeedSet('external', seedContent, 'external', seedType, false)
+			log.info("processing external ${seedType} seed")
+			tmpSet.seedList?.each { tmpSeed ->
+				try {
+					def domainClass = tmpSeed.domainClass
+					if(classMapping[domainClass]) {
+						def mapping = classMapping[domainClass]
+						tmpSeed.domainClass = mapping.domain
+						def propertyMapping = mapping.propertyMapping
+						def propertyKeys = propertyMapping.keySet()
+						def seedData = tmpSeed.data
+						for(int i = 0; i < propertyKeys.size(); i++) {
+							def key = propertyKeys[i]
+							def newKey = propertyMapping[key]
+							if (seedData.containsKey(key)) {
+								seedData[newKey] = seedData[key]
+								seedData.remove(key)
+							}
+						}
+					}
+					processSeedItem(tmpSet, tmpSeed, [])
+				} catch(e) {
+					log.error("error processing seed item ${tmpSeed}", e)
+					throw e
+				}
+			}
 		} catch(e) {
 			//log.error(e)
 			throw e
@@ -135,13 +174,13 @@ class SeedService {
 			log.info("processing inline seed")
 			tmpSet.seedList?.each { tmpSeed ->
 				try {
-					processSeedItem(tmpSet, tmpSeed)
+					processSeedItem(tmpSet, tmpSeed, [])
 				} catch(e) {
 					log.error("error processing seed item ${tmpSeed}", e)
 					throw e
 				}
 			}
-			processSeedItem(tmpSet, tmpSet)
+			processSeedItem(tmpSet, tmpSet, [])
 		} catch(e) {
 			//log.error(e)
 			throw e
