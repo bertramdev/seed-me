@@ -385,6 +385,8 @@ class SeedService {
 					} else if(tmpProp.type.isEnum() && value instanceof String) {
 						// if domain class property type is an enum, transform value into the appropriate enum type
 						setSeedValue(seedSet, saveData, key, Enum.valueOf(tmpProp.type, value), templates)
+					} else if(tmpProp.type == BigDecimal && value != null) {
+						setSeedValue(seedSet, saveData, key, new BigDecimal(value), templates)
 					} else {
 						//basic value
 						setSeedValue(seedSet, saveData, key, value, templates)
