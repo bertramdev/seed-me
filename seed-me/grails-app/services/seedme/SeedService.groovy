@@ -353,47 +353,53 @@ class SeedService {
 			def tmpData = seedItem.data
 			def saveData = [:]
 			tmpData.each { key, value ->
-				def tmpProp = tmpDomain.getPropertyByName(key)
-				if(tmpProp) {
-					if(tmpProp instanceof Association) {
-						def subDomain = tmpProp.associatedEntity
-						if(tmpProp instanceof OneToMany) {
-							if(value instanceof Map) {
+				try {
+					def tmpProp = tmpDomain.getPropertyByName(key)
+					if(tmpProp) {
+						if(tmpProp instanceof Association) {
+							def subDomain = tmpProp.associatedEntity
+							if(tmpProp instanceof OneToMany) {
+								if(value instanceof Map) {
+									setSeedValue(seedSet, saveData, key, value, templates, subDomain)
+								} else if(value instanceof List) {
+									setSeedValue(seedSet, saveData, key, value, templates, subDomain)
+								}
+							} else if((tmpProp instanceof ToOne) || (tmpProp instanceof OneToOne )) {
+								if(value instanceof Map) {
+									setSeedValue(seedSet, saveData, key, value, templates, subDomain)
+								}
+							} else if(tmpProp instanceof ManyToMany) {
+								if(value instanceof Map) {
+									setSeedValue(seedSet, saveData, key, value, templates, subDomain)
+								} else if(value instanceof List) {
+									setSeedValue(seedSet, saveData, key, value, templates, subDomain)
+								}
+							} else if(tmpProp instanceof ManyToOne) {
+								if(value instanceof Map) {
+									setSeedValue(seedSet, saveData, key, value, templates, subDomain)
+								}
+							} else if(tmpProp instanceof Basic) {
 								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
-							} else if(value instanceof List) {
-								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
+							} else {
+								log.warn "Association is not handled thus this object may not be seeded: ${tmpProp.getName()} type: ${tmpProp.getType()?.getName()}"
 							}
-						} else if((tmpProp instanceof ToOne) || (tmpProp instanceof OneToOne )) {
-							if(value instanceof Map) {
-								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
-							}
-						} else if(tmpProp instanceof ManyToMany) {
-							if(value instanceof Map) {
-								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
-							} else if(value instanceof List) {
-								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
-							}
-						} else if(tmpProp instanceof ManyToOne) {
-							if(value instanceof Map) {
-								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
-							}
-						} else if(tmpProp instanceof Basic) {
-							setSeedValue(seedSet, saveData, key, value, templates, subDomain)
+						} else if(tmpProp.type.isEnum() && value instanceof String) {
+							// if domain class property type is an enum, transform value into the appropriate enum type
+							setSeedValue(seedSet, saveData, key, Enum.valueOf(tmpProp.type, value), templates)
+						} else if(tmpProp.type == BigDecimal && value != null) {
+							setSeedValue(seedSet, saveData, key, new BigDecimal(value), templates)
 						} else {
-							log.warn "Association is not handled thus this object may not be seeded: ${tmpProp.getName()} type: ${tmpProp.getType()?.getName()}"
+							//basic value
+							setSeedValue(seedSet, saveData, key, value, templates)
 						}
-					} else if(tmpProp.type.isEnum() && value instanceof String) {
-						// if domain class property type is an enum, transform value into the appropriate enum type
-						setSeedValue(seedSet, saveData, key, Enum.valueOf(tmpProp.type, value), templates)
-					} else if(tmpProp.type == BigDecimal && value != null) {
-						setSeedValue(seedSet, saveData, key, new BigDecimal(value), templates)
 					} else {
-						//basic value
 						setSeedValue(seedSet, saveData, key, value, templates)
 					}
-				} else {
-					setSeedValue(seedSet, saveData, key, value, templates)
+				} catch (Throwable t) {
+					log.error("Error processing domain ${seedItem.domainClass} for property ${key} with value ${value}: ${t.getMessage()}")
+					throw t
 				}
+				
 			}
 			def opts = [:]
 			tmpMeta.entrySet().each() { it ->
@@ -412,92 +418,98 @@ class SeedService {
 	}
 
 	def setSeedValue(Map seedSet, Map data, String key, Object value, Collection templates, Object domain) {
-		def tmpCriteria = [:]
-		if(domain) {
-			if(value instanceof Map) {
-				value = value.clone()
-				if(value.containsKey('domainClass')) {
-					value.remove('domainClass')
-				}
-				def tmpObj = findSeedObject(domain, value) 
-				if(tmpObj) {
-					data[key] = tmpObj
-				} else {
-					log.warn("seed: ${seedSet?.name} - unable to locate domain object ${domain} with criteria ${value}")
-				}
-			} else if(value instanceof List) {
-				data[key] = value.collect {
-					def tmpSeedMeta = it.clone().remove(getMetaKey())
-					tmpCriteria = it
-					if(tmpSeedMeta && tmpSeedMeta['criteria']==true) {
-						it.each{ k, val  ->
-							setSeedValue(seedSet, tmpCriteria, k, val, templates)
+		try {
+			def tmpCriteria = [:]
+			if(domain) {
+				if(value instanceof Map) {
+					value = value.clone()
+					if(value.containsKey('domainClass')) {
+						value.remove('domainClass')
+					}
+					def tmpObj = findSeedObject(domain, value) 
+					if(tmpObj) {
+						data[key] = tmpObj
+					} else {
+						log.warn("seed: ${seedSet?.name} - unable to locate domain object ${domain} with criteria ${value}")
+					}
+				} else if(value instanceof List) {
+					data[key] = value.collect {
+						def tmpSeedMeta = it.clone().remove(getMetaKey())
+						tmpCriteria = it
+						if(tmpSeedMeta && tmpSeedMeta['criteria']==true) {
+							it.each{ k, val  ->
+								setSeedValue(seedSet, tmpCriteria, k, val, templates)
+							}
 						}
+						def tmpObj = findSeedObject(domain, tmpCriteria)
+						if(!tmpObj) {
+							log.warn("seed: ${seedSet?.name} - unable to locate domain object ${domain} with criteria ${tmpCriteria}")
+						}
+						return tmpObj
+					}.findAll{ it!=null }
+				}
+			//} else if (value instanceof Map && value[getMetaKey()]) {
+			} else if(value instanceof Map && value.containsKey('domainClass')) {
+				value = value.clone() //Dont want to simply remove keys in case this value is reused elsewhere
+				def tmpMatchDomain = value.remove('domainClass')
+				def tmpObjectMeta = value.remove(getMetaKey())
+				if(tmpObjectMeta && tmpObjectMeta['criteria']==true) {
+					value.each{ k , val ->
+						setSeedValue(seedSet, tmpCriteria, k, val, templates)
 					}
-					def tmpObj = findSeedObject(domain, tmpCriteria)
-					if(!tmpObj) {
-						log.warn("seed: ${seedSet?.name} - unable to locate domain object ${domain} with criteria ${tmpCriteria}")
+					value = tmpCriteria
+				}
+				def seedObject = findSeedObject(tmpMatchDomain ?: key, value)
+				if(!seedObject && key != getMetaKey()) {
+					log.warn("seed: ${seedSet?.name} - unable to locate domain object ${tmpMatchDomain ?: key} with criteria ${value}")
+				}
+				if(tmpObjectMeta && tmpObjectMeta['useId']==true)
+					seedObject = seedObject?.id
+				else if(tmpObjectMeta && tmpObjectMeta['useValue'])
+					seedObject = seedObject[tmpObjectMeta['useValue']]
+				else if(tmpObjectMeta && tmpObjectMeta['useClosure'])
+					seedObject = tmpObjectMeta['useClosure'](seedObject)
+				else if(tmpObjectMeta && tmpObjectMeta['property'])
+					seedObject = seedObject?."${tmpObjectMeta['property']}"
+				if(seedObject) {
+					data[key] = seedObject
+				} 
+			} else if(value instanceof Map && value._literal == true) {
+				data[key] = value.value
+			} else if(value instanceof Map && value._template == true) {
+				//check the template map
+				def templateName = value.value
+				def templateMatch = templates?.find{ it.name == templateName }
+				if(!templateMatch) {
+					//sub folder - built the name
+					def seedNameTokens = seedSet?.seedFile.name.tokenize('/')
+					if(seedNameTokens.size() > 1) {
+						templateName = seedNameTokens[0..-2].join('/') + '/' + templateName
+						templateMatch = templates?.find{ it.name == templateName }
 					}
-					return tmpObj
-				}.findAll{ it!=null }
-			}
-		//} else if (value instanceof Map && value[getMetaKey()]) {
-		} else if(value instanceof Map && value.containsKey('domainClass')) {
-			value = value.clone() //Dont want to simply remove keys in case this value is reused elsewhere
-			def tmpMatchDomain = value.remove('domainClass')
-			def tmpObjectMeta = value.remove(getMetaKey())
-			if(tmpObjectMeta && tmpObjectMeta['criteria']==true) {
-				value.each{ k , val ->
-					setSeedValue(seedSet, tmpCriteria, k, val, templates)
 				}
-				value = tmpCriteria
-			}
-			def seedObject = findSeedObject(tmpMatchDomain ?: key, value)
-			if(!seedObject && key != getMetaKey()) {
-				log.warn("seed: ${seedSet?.name} - unable to locate domain object ${tmpMatchDomain ?: key} with criteria ${value}")
-			}
-			if(tmpObjectMeta && tmpObjectMeta['useId']==true)
-				seedObject = seedObject?.id
-			else if(tmpObjectMeta && tmpObjectMeta['useValue'])
-				seedObject = seedObject[tmpObjectMeta['useValue']]
-			else if(tmpObjectMeta && tmpObjectMeta['useClosure'])
-				seedObject = tmpObjectMeta['useClosure'](seedObject)
-			else if(tmpObjectMeta && tmpObjectMeta['property'])
-				seedObject = seedObject?."${tmpObjectMeta['property']}"
-			if(seedObject) {
-				data[key] = seedObject
-			} 
-		} else if(value instanceof Map && value._literal == true) {
-			data[key] = value.value
-		} else if(value instanceof Map && value._template == true) {
-			//check the template map
-			def templateName = value.value
-			def templateMatch = templates?.find{ it.name == templateName }
-			if(!templateMatch) {
-				//sub folder - built the name
-				def seedNameTokens = seedSet?.seedFile.name.tokenize('/')
-				if(seedNameTokens.size() > 1) {
-					templateName = seedNameTokens[0..-2].join('/') + '/' + templateName
-					templateMatch = templates?.find{ it.name == templateName }
+				if(templateMatch) {
+					def templateContent = templateMatch.content
+					if(!templateContent && templateMatch.file) {
+						templateContent = templateMatch.file.getText('UTF-8')
+					}
+					//set the content
+					data[key] = templateContent
+				} else {
+					log.warn("seed value template not found: ${value.value} - templateFile: ${templateName} - ${seedSet?.name}")
 				}
-			}
-			if(templateMatch) {
-				def templateContent = templateMatch.content
-				if(!templateContent && templateMatch.file) {
-					templateContent = templateMatch.file.getText('UTF-8')
-				}
-				//set the content
-				data[key] = templateContent
+			} else if(value instanceof CharSequence && value.toString().indexOf('$') >= 0) {
+				data[key] = new GStringTemplateEngine().createTemplate(value.toString()).make(getDomainBindingsForGString()).toString()
+			} else if(value instanceof Closure) {
+				data[key] = value.call(data)
 			} else {
-				log.warn("seed value template not found: ${value.value} - templateFile: ${templateName} - ${seedSet?.name}")
+				data[key] = value
 			}
-		} else if(value instanceof CharSequence && value.toString().indexOf('$') >= 0) {
-			data[key] = new GStringTemplateEngine().createTemplate(value.toString()).make(getDomainBindingsForGString()).toString()
-		} else if(value instanceof Closure) {
-			data[key] = value.call(data)
-		} else {
-			data[key] = value
+		} catch (Throwable t) {
+			log.error("Error setting value ${value} on property ${key}: ${t.getMessage()}")
+			throw t
 		}
+		
 	}
 
 	def getDomainBindingsForGString() {
@@ -1006,9 +1018,15 @@ class SeedService {
 	}
 
 	private lookupDomain(domainClassName) {
-		def capitalized = domainClassName.capitalize()
-		def domains = grailsDomainClassMappingContext.persistentEntities*.name
-		grailsDomainClassMappingContext.getPersistentEntity(domains.find { it.endsWith(".${capitalized}") })
+		try {
+			def capitalized = domainClassName.capitalize()
+			def domains = grailsDomainClassMappingContext.persistentEntities*.name
+			grailsDomainClassMappingContext.getPersistentEntity(domains.find { it.endsWith(".${capitalized}") })
+		} catch (Throwable t) {
+			log.error("Error looking up domain '${domainClassName}': ${t.getMessage()}")
+			throw t
+		}
+		
 	}
 
 }
