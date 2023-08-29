@@ -154,6 +154,7 @@ class SeedService {
 
 		} catch(e) {
 			log.error("error building seed set ${name}",e)
+			throw e
 		}
 
 		return rtn

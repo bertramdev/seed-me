@@ -17,8 +17,10 @@ class AdminSeedController {
 		try {
 			def tmpData = params.seedFile
 			seedService.installExternalSeed(tmpData)
+			flash.message = "External seed installation successful."
 		} catch(e) {
 			log.error(e)
+			flash.error = "Error during seed installation: ${e.message}"
 		}
 		chain(controller:'adminSeed', action:'index')
 	}
