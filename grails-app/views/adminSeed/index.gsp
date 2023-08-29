@@ -11,4 +11,12 @@
 		<label>&nbsp;</label>
 		<g:submitButton name="submit" value="submit" class="btn btn-primary"/>
 	</fieldset>
+	<div>
+		<g:if test="${flash.message}">
+			<p class="text-success" style="color: green;">${flash.message}</p>
+		</g:if>
+		<g:if test="${flash.error}">
+			<p class="text-danger" style="color: red;">${flash.error}</p>
+		</g:if>
+	</div>
 </g:form>
