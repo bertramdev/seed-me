@@ -364,7 +364,7 @@ class SeedService {
 								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
 							}
 						} else if((tmpProp instanceof ToOne) || (tmpProp instanceof OneToOne )) {
-							if(value instanceof Map) {
+							if(value instanceof Map || value == null) {
 								setSeedValue(seedSet, saveData, key, value, templates, subDomain)
 							}
 						} else if(tmpProp instanceof ManyToMany) {
@@ -440,7 +440,9 @@ class SeedService {
 					}
 					return tmpObj
 				}.findAll{ it!=null }
-			}
+			} else if(value == null) {
+                data[key] = null
+            }
 		//} else if (value instanceof Map && value[getMetaKey()]) {
 		} else if(value instanceof Map && value.containsKey('domainClass')) {
 			value = value.clone() //Dont want to simply remove keys in case this value is reused elsewhere
