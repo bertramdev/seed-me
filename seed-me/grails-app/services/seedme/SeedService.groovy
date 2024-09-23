@@ -6,7 +6,6 @@ import groovy.text.GStringTemplateEngine
 import java.security.MessageDigest
 import java.security.DigestInputStream
 import java.util.zip.*
-import javax.xml.bind.DatatypeConverter
 
 import org.grails.datastore.mapping.model.PersistentEntity
 import org.grails.datastore.mapping.model.PersistentProperty
