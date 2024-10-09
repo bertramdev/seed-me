@@ -673,9 +673,10 @@ class SeedService {
 
 	def getSeedFiles() {
 		def (seedFiles, seedTemplates) = getClassPathSeedFiles()
+		
 		//exit if we have them from the classpath
-		if(seedFiles)
-			return [seedFiles, seedTemplates]
+		// if(seedFiles)
+		// 	return [seedFiles, seedTemplates]
 		//build the list based on environment
 		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
 		def seedPaths = getSeedPathsByPlugin()
