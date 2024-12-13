@@ -672,9 +672,10 @@ class SeedService {
 
 	def getSeedFiles() {
 		def (seedFiles, seedTemplates) = getClassPathSeedFiles()
+
 		//exit if we have them from the classpath
-		if(seedFiles)
-			return [seedFiles, seedTemplates]
+		// if(seedFiles)
+		// 	return [seedFiles, seedTemplates]
 		//build the list based on environment
 		def tmpEnvironmentFolder = getEnvironmentSeedPath() //configurable seed environment.
 		def seedPaths = getSeedPathsByPlugin()
@@ -900,54 +901,60 @@ class SeedService {
 	}
 
 	private seedSetProcess(Map set, Map seedSetsLeft, Map seedSetsByPlugin, Map seedSetsByName, Collection templates, Collection seedOrder) {
-		if(!set) return
-		def setKey = buildSeedSetKey(set.name, set.plugin)
-		// if this set has dependencies, process them first
-		if(set.dependsOn) {
-			log.debug("\tdependencies : ${set.dependsOn.join(', ')}")
-			set.dependsOn.each { depSeed ->
-				def deps = []
-				// if the plugin is specified, construct the correct key
-				if(depSeed.contains('.')) {
-					def plugin = depSeed.substring(0, depSeed.indexOf('.'))
-					deps = [buildSeedSetKey(plugin, depSeed.substring(plugin.length() + 1))]
-				} else { // in case of ambiguity find all seeds with matching name
-					def sets = seedSetsByName[depSeed]
-					deps = sets.collect { "${it.plugin}.${it.name}" }
-				}
-				if(!deps) {
-					log.warn("cannot resolve dependency: (${depSeed})")
-				}
-				deps.each { dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByPlugin, seedSetsByName, templates, seedOrder) }
-			}
-		}
-		if(!set.checksumMatched) {
-			//if this seed set is in the list, run it
-			//def seedCheck = checkChecksum(setKey)
-			if(seedSetsLeft[setKey]) { // && (seedCheck?.checksum != set.checksum)) {
-				log.debug("processing: ${setKey}")
-				def seedTask = task {
-					SeedMeChecksum.withNewSession { session ->
-						SeedMeChecksum.withTransaction {
-							try {
-								set.seedList.each { seedItem ->
-									processSeedItem(set, seedItem, templates)
-								}
-								updateChecksum(set.seedCheckId, set.checksum, setKey, set.seedVersion)
-								seedSetsLeft[setKey] = null
-								seedSetsLeft.remove(setKey)
-								seedOrder << set.name
-								gormFlush(session)
-							} catch(setError) {
-								log.error("error processing seed set ${set.name}", setError)
+		try {
+			if(!set) return
+					def setKey = buildSeedSetKey(set.name, set.plugin)
+					// if this set has dependencies, process them first
+					if(set.dependsOn) {
+						log.debug("\tdependencies : ${set.dependsOn.join(', ')}")
+						set.dependsOn.each { depSeed ->
+							def deps = []
+							// if the plugin is specified, construct the correct key
+							if(depSeed.contains('.')) {
+								def plugin = depSeed.substring(0, depSeed.indexOf('.'))
+								deps = [buildSeedSetKey(plugin, depSeed.substring(plugin.length() + 1))]
+							} else { // in case of ambiguity find all seeds with matching name
+								def sets = seedSetsByName[depSeed]
+								deps = sets.collect { "${it.plugin}.${it.name}" }
 							}
+							if(!deps) {
+								log.warn("cannot resolve dependency: (${depSeed})")
+							}
+							deps.each { dep ->	seedSetProcess(seedSetsLeft[dep], seedSetsLeft, seedSetsByPlugin, seedSetsByName, templates, seedOrder) }
 						}
 					}
-					return true
-				}
-				waitAll(seedTask)
-			}
+					if(!set.checksumMatched) {
+						//if this seed set is in the list, run it
+						//def seedCheck = checkChecksum(setKey)
+						if(seedSetsLeft[setKey]) { // && (seedCheck?.checksum != set.checksum)) {
+							log.debug("processing: ${setKey}")
+							def seedTask = task {
+								SeedMeChecksum.withNewSession { session ->
+									SeedMeChecksum.withTransaction {
+										try {
+											set.seedList.each { seedItem ->
+												processSeedItem(set, seedItem, templates)
+											}
+											updateChecksum(set.seedCheckId, set.checksum, setKey, set.seedVersion)
+											seedSetsLeft[setKey] = null
+											seedSetsLeft.remove(setKey)
+											seedOrder << set.name
+											gormFlush(session)
+										} catch(setError) {
+											log.error("error processing seed set ${set.name}", setError)
+										}
+									}
+								}
+								return true
+							}
+							waitAll(seedTask)
+						}
+					}
+		} catch (Throwable t) {
+			log.error("Error Processing Seed Set Dependencies: ${set.dependsOn.join(', ')}")
+			throw new Exception(t)
 		}
+		
 	}
 
 	private checkChecksum(seedName) {
